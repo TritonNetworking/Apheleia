@@ -53,8 +53,8 @@ before_install:
 
 before_install:
   - eval "${MATRIX_EVAL}"
-# - sudo apt-get update -qq
-# - sudo apt-get install -y libopencv-dev
+  - sudo apt-get update -qq
+  - sudo apt-get install -y libtbb-dev libtbb2 
 
 script:
   - mkdir build
