@@ -44,6 +44,7 @@ struct MySource {
 			v = new TupleBuffer();
 			return true;
 		} else {
+			cout << "Source emitted " << LIMIT << " buffers" << endl;
 			return false;
 		}
 	}
