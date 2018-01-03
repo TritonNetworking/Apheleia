@@ -1,9 +1,11 @@
+#include <iostream>
+#include <string.h>
 #include "tbb/tbb_allocator.h"
 #include "tbb/flow_graph.h"
 #include "tbb/concurrent_queue.h"
 #include "tbb/tick_count.h"
-#include <iostream>
-#include <string.h>
+
+#include "proto/message.pb.h"
 
 using namespace std;
 using namespace tbb;
@@ -74,6 +76,7 @@ int main(int argc, char* argv[])
 {
 	graph producer_side;
 	//graph consumer_side;
+	message::Message m;
 
 	source_node<TupleBuffer*> src(producer_side, MySource(), /* is_active */ false );
 	function_node<TupleBuffer*,TupleBuffer*> func1(producer_side, unlimited, Worker_NOP());

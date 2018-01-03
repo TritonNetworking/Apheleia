@@ -1,3 +1,4 @@
+
 set(Main_Sockets_SRCS
     main-sockets.cpp
 )
@@ -18,4 +19,6 @@ TARGET_LINK_LIBRARIES(tbb-sockets
     tbb
 	tbbmalloc
 	rt
+	proto
+	${PROTOBUF_LIBRARY}
 )
