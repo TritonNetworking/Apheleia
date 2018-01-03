@@ -12,17 +12,6 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
           packages:
-            - g++-4.9
-      env:
-         - MATRIX_EVAL="CC=gcc-4.9 && CXX=g++-4.9"
-
-    # works on Precise and Trusty
-    - os: linux
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-          packages:
             - g++-5
       env:
          - MATRIX_EVAL="CC=gcc-5 && CXX=g++-5"
@@ -50,11 +39,9 @@ matrix:
         - MATRIX_EVAL="CC=gcc-7 && CXX=g++-7"
 
 before_install:
-
-before_install:
   - eval "${MATRIX_EVAL}"
   - sudo apt-get update -qq
-  - sudo apt-get install -y libtbb-dev libtbb2 
+  - sudo apt-get install -y libtbb-dev libtbb2 libprotobuf-c-dev libprotobuf-c1 libprotobuf-dev libprotobuf-lite9v5 libprotobuf9v5 libprotoc9v5 protobuf-c-compiler zlib1g-dev protobuf-compiler
 
 script:
   - mkdir build
