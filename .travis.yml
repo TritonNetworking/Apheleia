@@ -41,7 +41,7 @@ matrix:
 before_install:
   - eval "${MATRIX_EVAL}"
   - sudo apt-get update -qq
-  - sudo apt-get install -y libtbb-dev libtbb2 libprotobuf-c-dev libprotobuf-c1 libprotobuf-dev libprotobuf-lite9v5 libprotobuf9v5 libprotoc9v5 protobuf-c-compiler zlib1g-dev protobuf-compiler
+  - sudo apt-get install -y libtbb-dev libtbb2 libprotobuf-dev protobuf-compiler
 
 script:
   - mkdir build
