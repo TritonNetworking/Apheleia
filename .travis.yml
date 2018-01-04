@@ -41,6 +41,7 @@ matrix:
 before_install:
   - eval "${MATRIX_EVAL}"
   - sudo apt-get update -qq
+  - apt-cache search libproto
   - sudo apt-get install -y libtbb-dev libtbb2 libprotobuf-dev protobuf-compiler libprotobuf-c1
 
 script:
