@@ -23,6 +23,7 @@ before_install:
   - wget https://github.com/google/protobuf/releases/download/v3.5.1/protobuf-cpp-3.5.1.tar.gz
   - tar -xzvf protobuf-cpp-3.5.1.tar.gz
   - cd protobuf-3.5.1 && ./configure --prefix=/usr && make && sudo make install && sudo ldconfig
+  - cd ..
 
 script:
   - mkdir build
