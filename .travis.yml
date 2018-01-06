@@ -41,8 +41,10 @@ matrix:
 before_install:
   - eval "${MATRIX_EVAL}"
   - sudo apt-get update -qq
-  - apt-cache search libproto
-  - sudo apt-get install -y libtbb-dev libtbb2 libprotobuf-dev protobuf-compiler libprotobuf8 libprotoc8
+  - sudo apt-get install -y libtbb-dev libtbb2
+  - wget https://github.com/google/protobuf/releases/download/v3.5.1/protobuf-cpp-3.5.1.tar.gz
+  - tar -xzvf protobuf-3.5.1.tar.gz
+  - cd protobuf-3.5.1 && ./configure --prefix=/usr && make && make install && ldconfig
 
 script:
   - mkdir build
