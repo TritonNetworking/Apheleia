@@ -7,6 +7,5 @@ INCLUDE_DIRECTORIES(${CMAKE_CURRENT_BINARY_DIR})
 
 enable_testing()
 
-add_subdirectory(proto)
 add_subdirectory(main)
 add_subdirectory(test)

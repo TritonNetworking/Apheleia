@@ -5,8 +5,6 @@
 #include "tbb/concurrent_queue.h"
 #include "tbb/tick_count.h"
 
-#include "proto/message.pb.h"
-
 using namespace std;
 using namespace tbb;
 using namespace tbb::flow;
@@ -76,7 +74,6 @@ int main(int argc, char* argv[])
 {
 	graph producer_side;
 	//graph consumer_side;
-	message::Message m;
 
 	source_node<TupleBuffer*> src(producer_side, MySource(), /* is_active */ false );
 	function_node<TupleBuffer*,TupleBuffer*> func1(producer_side, unlimited, Worker_NOP());
