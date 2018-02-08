@@ -1,22 +1,18 @@
+ 	cmake_minimum_required(VERSION 3.0.0 FATAL_ERROR)
+	project(tbb_stages CXX)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -pthread")	
+	add_executable(tbb_send tbb-send.cpp Socket.cpp)	
+	add_executable(tbb_recv tbb-recv.cpp Socket.cpp)	
 
-set(Main_Sockets_SRCS
-    main-sockets.cpp
-)
+    include(${TBB_ROOT}/cmake/TBBBuild.cmake)
 
-add_executable(apheleia-sockets
-    ${Main_Sockets_SRCS}
-)
+    # Build Intel TBB with enabled Community Preview Features (CPF).
+    tbb_build(TBB_ROOT ${TBB_ROOT} CONFIG_DIR TBB_DIR MAKE_ARGS)
 
-set(Tbb_Sockets_SRCS
-    tbb-sockets.cpp
-)
+    find_package(TBB REQUIRED)
 
-add_executable(tbb-sockets
-    ${Tbb_Sockets_SRCS}
-)
-
-TARGET_LINK_LIBRARIES(tbb-sockets
-    tbb
-	tbbmalloc
-	rt
-)
+    # Link Intel TBB imported targets to the executable;
+    # "TBB::tbb_preview" can be used instead of "${TBB_IMPORTED_TARGETS}".
+    target_link_libraries(tbb_send ${TBB_IMPORTED_TARGETS})
+    target_link_libraries(tbb_recv ${TBB_IMPORTED_TARGETS})	
+	
