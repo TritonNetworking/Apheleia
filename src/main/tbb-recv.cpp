@@ -69,7 +69,7 @@ struct Receiver {
 		TupleBuffer* v = new TupleBuffer();
 		//Socket* new_socket=tcp_socket->tcpAccept(timeoutInMicros, v->size());
 		if (count < LIMIT) {
-			cout << "Recv-op"<<"\n";
+			cout << "Recv_operation"<<"\n";
 			++count;
 			uint64_t num_bytes = tcp_socket->tcpReceive(v->getBuffer(), v->size());
 			recv_bytes = recv_bytes + num_bytes;
@@ -77,6 +77,7 @@ struct Receiver {
 			return v;
 		} else {
 			//tcp_socket->tcpClose();
+			cout << "recv end" << "\n";
 			cout << "recv " << recv_bytes << " bytes" << endl;
 			return v;
 		}
@@ -107,17 +108,17 @@ struct Listener {
 	//	tcp_socket->tcpClose();
 	//}
 
-	bool operator()(Socket *&new_socket) {
+	bool operator()(Socket *new_socket) {
 	//bool TupleBuffer* operator()() {
 		//TupleBuffer* v = new TupleBuffer();
 		//Socket* new_socket=tcp_socket->tcpAccept(timeoutInMicros, v->size());
 		if (count < LIMIT) {
 			++count;
 			cout << "Listener_Operator"<<"\n";
-			tick_count t_start = tick_count::now();
-			Socket* new_socket=tcp_socket->tcpAccept(timeoutInMicros, 1024*1024);
-			tick_count t_end = tick_count::now();
-			cout << "Total runtime: " << (t_end - t_start).seconds() << " sec" << endl;
+			//tick_count t_start = tick_count::now();
+			new_socket=tcp_socket->tcpAccept(timeoutInMicros, 1024*1024);
+			//tick_count t_end = tick_count::now();
+			//cout << "Total runtime: " << (t_end - t_start).seconds() << " sec" << endl;
 			return true;
 		} 
 		else {
@@ -234,9 +235,9 @@ int main(int argc, char* argv[])
 	*/
 	
 	source_node<Socket*> listen(consumer_side, Listener(), false );
-	function_node<Socket*,TupleBuffer*> recv(consumer_side, 1, Receiver());   //, /* is_active */ false);
+	function_node<Socket*,TupleBuffer*> recv(consumer_side, unlimited, Receiver());   //, /* is_active */ false);
 	//function_node<TupleBuffer*,TupleBuffer*> func1(consumer_side, unlimited, Worker_NOP());
-	function_node<TupleBuffer*> sink(consumer_side, 1, Sinker());
+	function_node<TupleBuffer*> sink(consumer_side, unlimited, Sinker());
 
 	make_edge(listen,recv);
 	//make_edge(file_reader, recv);

@@ -75,25 +75,28 @@ struct Sender {
 	Sender() {
 		count = 0;	
 		sent_bytes = 0;
-		Socket* send_socket=new Socket();	
-		send_socket->tcpConnect(ipaddr, port, 1024*1024, retryDelayInMicros, Retry);
+		//send_socket=new Socket();	
+		//send_socket->tcpConnect(ipaddr, port, 1024*1024, retryDelayInMicros, Retry);
 	}
 
-	/*	
-	~Sender(){
+		
+	/*~Sender(){
 		send_socket->tcpClose();
 	}*/
 
 	TupleBuffer * operator()(TupleBuffer *v) {
+		send_socket=new Socket();
 		if (count < LIMIT) {
-			//send_socket->tcpConnect(ipaddr, port, 1024*1024, retryDelayInMicros, Retry);
-			++count;
+			send_socket->tcpConnect(ipaddr, port, 1024*1024, retryDelayInMicros, Retry);
+			count++;
 			uint64_t num_bytes = send_socket->tcpSend(v->getBuffer(), v->size());
 			sent_bytes = sent_bytes + num_bytes;
+			cout << "send  " << sent_bytes << " bytes" << endl;
+			cout << "count " << count << endl;
 			return v;
 		} else {
 			send_socket->tcpClose();
-			cout << "send " << sent_bytes << " bytes" << endl;
+			cout << "send  " << sent_bytes << " bytes" << endl;
 			return v;
 		}
 	}
@@ -128,6 +131,7 @@ int main(int argc, char* argv[])
 	//function_node<TupleBuffer*, TupleBuffer*> func1(producer_side, unlimited, Worker_NOP());
 	function_node<TupleBuffer*, TupleBuffer*> send(producer_side, 1 , Sender());
 
+	//function_node<TupleBuffer*, TupleBuffer*> send(producer_side, unlimited , Sender());
 	make_edge(src, send);
 	//make_edge(func1, send);
 

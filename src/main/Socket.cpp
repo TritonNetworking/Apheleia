@@ -175,12 +175,12 @@ void Socket::tcpConnect( const std::string& serverAddress, const std::string& se
   }
 
   // Set the TCP send buffer size
-  /*if (socketBufferSize > 0 && setsockopt(
+  if (socketBufferSize > 0 && setsockopt(
         fd, SOL_SOCKET, SO_SNDBUF, (char *)&socketBufferSize,
         sizeof(socketBufferSize))) {
-    //printf("setsocktopt SO_SNDBUF  with size %" PRIu64 "failed with status %d: %s", socketBufferSize, errno, strerror(errno));
+    printf("setsocktopt SO_SNDBUF  with size %" PRIu64 "failed with status %d: %s", socketBufferSize, errno, strerror(errno));
 	exit(1);
-  }*/
+  }
 
   //int set = 1;
   //setsockopt(fd, SOL_SOCKET, SO_NOSIGNA, (void *)&set, sizeof(int));
