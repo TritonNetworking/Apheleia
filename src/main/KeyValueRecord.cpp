@@ -10,10 +10,10 @@ KeyValueRecord::KeyValueRecord(){
 void KeyValueRecord::initRecord(uint32_t ksize_, uint32_t vsize_){
 	//keySize= ksize_;
 	//valueSize= vsize_;
-	keyBuffer = new uint8_t[ksize_];
-	valueBuffer = new uint8_t[vsize_];
-	memset(keyBuffer,0,ksize_*sizeof(uint8_t));
-	memset(valueBuffer,0,vsize_*sizeof(uint8_t));
+	keyBuffer = new char[ksize_];
+	valueBuffer = new char[vsize_];
+	memset(keyBuffer,0,ksize_*sizeof(char));
+	memset(valueBuffer,0,vsize_*sizeof(char));
 }
 
 KeyValueRecord::~KeyValueRecord(){
@@ -23,13 +23,13 @@ KeyValueRecord::~KeyValueRecord(){
 	}
 }
 
-void KeyValueRecord::setKey(uint32_t value, uint32_t index){
-	keyBuffer[index] = value;
+/*void KeyValueRecord::setKey(char* key){
+	keyBuffer=key;
 }
 
-void KeyValueRecord::setValue(uint32_t value, uint32_t index){
-	valueBuffer[index] = value;
-}
+void KeyValueRecord::setValue(char* value){
+	valueBuffer=value;
+}*/
 
 //TODO to be safer, use reference instead of pointer?
 

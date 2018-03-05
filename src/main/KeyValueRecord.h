@@ -10,16 +10,28 @@ class KeyValueRecord{
 	~KeyValueRecord();	
 	void initRecord(uint32_t ksize_, uint32_t vsize_);
 	//TODO to be safer, use reference instead of pointer
-	inline uint8_t getKey(int index){
+	inline char getKey(int index){
 		return keyBuffer[index];
 	}
 
-	inline uint8_t getValue(int index){
+	inline char getValue(int index){
 		return valueBuffer[index];
 	}
 
-	void setKey(uint32_t value, uint32_t index);
-	void setValue(uint32_t value, uint32_t index);
+	inline char* getKeyBuffer(){
+		return keyBuffer;
+	}
+
+	inline char* getValueBuffer(){
+		return valueBuffer;
+	}
+
+	inline void setKey(char* key){
+		keyBuffer=key;
+	}
+	inline void setValue(char* value){
+		valueBuffer=value;
+	}
 	//inline uint32_t getKeySize() const;
 	//inline uint32_t getValueSize() const;
 	void setProcessed(bool setting);
@@ -27,8 +39,8 @@ class KeyValueRecord{
 
   	//[ uint64_t keySize, uint32_t valueSize, uint8_t* key, uint8_t* value ]
 	private:
-	uint8_t* keyBuffer;
-  	uint8_t* valueBuffer;
+	char* keyBuffer;
+  	char* valueBuffer;
   	//uint32_t keySize;
   	//uint32_t valueSize;
     bool processed;

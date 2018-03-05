@@ -6,8 +6,8 @@
 	#add_executable(pipe_send pipeline_send.cpp Socket.cpp)	
 	#add_executable(pipe_recv pipeline_recv.cpp Socket.cpp)
 	#add_executable(pipe_test pipe_test.cpp gen_input.cpp)	
-
-	add_executable(main_radix main_radix.cpp KeyValueRecord.cpp BucketTable.cpp)	
+	add_executable(async_io async_node.cpp KeyValueRecord.cpp BucketTable.cpp)
+	#add_executable(main_radix main_radix.cpp KeyValueRecord.cpp BucketTable.cpp)	
 
     include(${TBB_ROOT}/cmake/TBBBuild.cmake)
 
@@ -23,8 +23,9 @@
 	#target_link_libraries(pipe_send ${TBB_IMPORTED_TARGETS})
 	#target_link_libraries(pipe_recv ${TBB_IMPORTED_TARGETS})
 	#target_link_libraries(pipe_test ${TBB_IMPORTED_TARGETS})
-	
-	target_link_libraries(main_radix ${TBB_IMPORTED_TARGETS})
+
+	target_link_libraries(async_io ${TBB_IMPORTED_TARGETS})
+	#target_link_libraries(main_radix ${TBB_IMPORTED_TARGETS})
 	
 	
 
