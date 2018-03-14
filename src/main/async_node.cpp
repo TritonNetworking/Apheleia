@@ -1,25 +1,3 @@
-/*
-    Copyright (c) 2005-2017 Intel Corporation
-
-    Licensed under the Apache License, Version 2.0 (the "License");
-    you may not use this file except in compliance with the License.
-    You may obtain a copy of the License at
-
-        http://www.apache.org/licenses/LICENSE-2.0
-
-    Unless required by applicable law or agreed to in writing, software
-    distributed under the License is distributed on an "AS IS" BASIS,
-    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-    See the License for the specific language governing permissions and
-    limitations under the License.
-
-
-
-
-*/
-
-//#define TBB_PREVIEW_FLOW_GRAPH_FEATURES 1
-//#include "tbb/tbb_config.h"
 #include "../utility/utility.h"
 //if __TBB_PREVIEW_ASYNC_MSG && __TBB_CPP11_LAMBDAS_PRESENT
 
@@ -29,9 +7,9 @@
 #include <memory>
 #include <queue>
 #include <cstdint>
+#include <functional>
 //#include <stdint.h>
 //#include <inttypes.h>
-//#include "bzlib.h"
 #include "tbb/flow_graph.h"
 #include "tbb/tick_count.h"
 #include "tbb/compat/thread"
@@ -40,7 +18,7 @@
 #include "KeyValueRecord.h"
 #include "Histogram.h"
 #include "BucketTable.h"
-    #include <vector>
+#include <vector>
 
 std::vector<uint64_t> std_lantency_list;
 std::vector<uint64_t> radix_lantency_list;
@@ -49,28 +27,43 @@ std::vector<double> radix_rate_list;
 
 class BaseBuffer{
   public: 
-    BaseBuffer(uint32_t num){
-      buf_size= num;
-      buffer = new KeyValueRecord[num];
+    BaseBuffer(){}
+
+    //TODO: fix deconstructors
+    ~BaseBuffer(){
+       //delete [] buffer;
+        std::cout << " BaseBuffer destructor" <<"\n";
+        for(uint32_t i = 0; i < buffer.size() ; i++){
+            KeyValueRecord* kvr = buffer.back();
+            //kvr->initRecord(ksize, vsize); 
+            delete kvr; //de-alloc bug
+            buffer.pop_back();
+        }
     }
 
     uint32_t getBufferSize(){
       return buf_size;
     }
 
-    void createRecords(){ //(uint32_t _ks, uint32_t _vs){
+    void createRecords(uint32_t num){ //(uint32_t _ks, uint32_t _vs){
       //ksize = _ks;
       //vsize = _vs;
+      buf_size= num;
+      //buffer = new KeyValueRecord[num];
+      buffer.reserve(buf_size);
       ksize = 10;
       vsize= 90;
+      //buffer = new KeyValueRecord[num];
       for(uint32_t i = 0; i < buf_size; i++){
-        buffer[i].initRecord(ksize, vsize);
+        KeyValueRecord* kvr = new KeyValueRecord();
+        kvr->initRecord(ksize, vsize); //BUG??
+        buffer.push_back(kvr);
       }
     }
 
     void setRecord(KeyValueRecord* kvr, int index){
       //for(int j=0; j< buf_size; j++){
-      buffer[index]=*kvr;
+      buffer[index]=kvr;
       //}
     }
 
@@ -86,8 +79,8 @@ class BaseBuffer{
         //std::memcpy(value, vbase, vsize);
         char* kbase=rawBuffer+100*j;
         char* vbase=kbase+10;
-        buffer[j].setKey(kbase);
-        buffer[j].setValue(vbase);
+        buffer[j]->setKey(kbase);
+        buffer[j]->setValue(vbase);
       }
     }
 
@@ -99,7 +92,7 @@ class BaseBuffer{
     }*/
 
     KeyValueRecord* getRecords(uint32_t index){
-      return &(buffer[index]);
+      return buffer[index];
     }
 
     uint32_t getKeySize(){
@@ -111,7 +104,8 @@ class BaseBuffer{
     }
 
   private:
-  KeyValueRecord* buffer;
+  //KeyValueRecord* buffer;
+  std::vector<KeyValueRecord*> buffer;
   uint32_t ksize;
   uint32_t vsize;  
   uint32_t buf_size;
@@ -126,24 +120,32 @@ struct Buffer {
 struct BufferMsg {
 
     BufferMsg() {}
-    BufferMsg(Buffer& inputBuffer, Buffer& outputBuffer, size_t seqId, bool isLast = false)
-        : inputBuffer(inputBuffer), outputBuffer(outputBuffer), seqId(seqId), isLast(isLast) {}
+    BufferMsg(Buffer& inputBuffer, Buffer& outputBuffer, BaseBuffer* _basebuf, size_t seqId, bool isLast = false)
+        : inputBuffer(inputBuffer), outputBuffer(outputBuffer), basebuf(_basebuf), seqId(seqId), isLast(isLast){}
 
-    static BufferMsg createBufferMsg(size_t seqId, size_t chunkSize) {
-        Buffer inputBuffer;
-        inputBuffer.b = new char[chunkSize];
-        inputBuffer.len = chunkSize;
+    //TODO add one more argument for num_record  
+    static BufferMsg createBufferMsg(size_t seqId, size_t chunkSize, uint32_t num_rcrd) {
+        //num_record = num_rcrd;
 
-        Buffer outputBuffer;
-        outputBuffer.b = new char[chunkSize];
-        outputBuffer.len = chunkSize;
+        Buffer _inputBuffer;
+        _inputBuffer.b = new char[chunkSize];
+        _inputBuffer.len = chunkSize;
 
-        return BufferMsg(inputBuffer, outputBuffer, seqId);
+        Buffer _outputBuffer;
+        _outputBuffer.b = new char[chunkSize];
+        _outputBuffer.len = chunkSize;
+
+        BaseBuffer* _basebuf = new BaseBuffer(); // if basebuf is hust a reference, then its underlying pointers can be an issue
+        _basebuf->createRecords(num_rcrd);
+        _basebuf->setAllRecords(_inputBuffer.b);
+
+        return BufferMsg(_inputBuffer, _outputBuffer, _basebuf, seqId);
     }
 
     static void destroyBufferMsg(const BufferMsg& destroyMsg) {
         delete[] destroyMsg.inputBuffer.b;
         delete[] destroyMsg.outputBuffer.b;
+        delete destroyMsg.basebuf;
     }
 
     void markLast(size_t lastId) {
@@ -154,31 +156,135 @@ struct BufferMsg {
     size_t seqId;
     Buffer inputBuffer;
     Buffer outputBuffer;
+    BaseBuffer* basebuf;
     bool isLast;
+    uint32_t num_record;
 };
+
+typedef tbb::flow::multifunction_node<BufferMsg, tbb::flow::tuple<BufferMsg,BufferMsg,BufferMsg,BufferMsg> > Mapper;
+
+class MapperOp{
+
+    public:
+    MapperOp(uint32_t num_rcrd) : num_record(num_rcrd), counter(0), nway(4) {}
+
+    void operator() (BufferMsg buffer, Mapper::output_ports_type &op){
+        //std::cout << "MapperOp"<< "-";
+        //std::cout << "counter: " << counter << "\n";   
+
+        BufferMsg bufmsg_array[nway];
+        std::vector<BaseBuffer*> basebuf_array;
+        //BaseBuffer* basebuf_array = new BaseBuffer[nway];
+        uint32_t basebuf_index[nway];
+        BaseBuffer basebuf;//= new BaseBuffer(num_record);
+        basebuf.createRecords(num_record);
+        basebuf.setAllRecords(buffer.inputBuffer.b);
+
+        //1. create BaseBuffer _basebuf
+        for(int i = 0; i < nway; i++){
+            BaseBuffer* b = new BaseBuffer();
+            b->createRecords( uint32_t(num_record/nway) );
+            basebuf_array.push_back(b);
+            basebuf_index[i]=0;
+        }
+
+        //2. distribute records to 
+        for(uint32_t i = 0; i < num_record; i++){
+            KeyValueRecord* kvr = basebuf.getRecords(i);
+            int split_way = kvr->getKey(0)%nway; // split it into four
+            basebuf_array[split_way]->setRecord(kvr,basebuf_index[split_way]);
+            basebuf_index[split_way]++;
+        }
+
+
+        for(int i = 0; i < nway; i++){
+            //TODO!! pointer or ref? for bufmsg_array.
+            if(!buffer.isLast){
+                bufmsg_array[i] = BufferMsg(buffer.inputBuffer, buffer.outputBuffer, basebuf_array[i], buffer.seqId);
+            }
+            else{
+                bufmsg_array[i] = BufferMsg(buffer.inputBuffer, buffer.outputBuffer, basebuf_array[i], buffer.seqId);   
+                bufmsg_array[i].markLast(buffer.seqId);
+            }
+            if(i==0){
+                    std::get<0>(op).try_put(bufmsg_array[i]);
+            }
+            else if(i==1){
+                    std::get<1>(op).try_put(bufmsg_array[i]);
+            }
+            else if(i==2){
+                    std::get<2>(op).try_put(bufmsg_array[i]);
+            }
+            else{
+                    std::get<3>(op).try_put(bufmsg_array[i]);
+            }
+        }
+        counter++; 
+            /*  
+            BufferMsg bufmsg_array[nway];
+            BaseBuffer basebuf_array[nway];
+            uint32_t basebuf_index[nway];
+            BaseBuffer basebuf;
+            basebuf.createRecords(num_record);
+            basebuf.setAllRecords(buffer.inputBuffer.b);
+
+            //1. create BaseBuffer _basebuf
+            for(int i = 0; i < nway; i++){
+                basebuf_array[i].createRecords(num_record/nway)
+            }
+
+            //2. distribute records to 
+            for(uint32_t i = 0; i < num_record; i++){
+                KeyValueRecord* kvr = basebuf.getRecords(i);
+                int split_way = kvr->getKey(0)%nway; // split it into four
+                basebuf_array[split_way].setRecord(kvr,basebuf_index[split_way]);
+                basebuf_index[split_way]++;
+            }
+            // new outputBuffer
+            size_t length = buffer.outputBuffer.len;
+            for(int i = 0; i < nway; i++){
+                Buffer output;
+                output.b = new char[length];
+                output.len = length;
+                //TODO!! pointer or ref? for bufmsg_array.
+                bufmsg_array[i] = BufferMsg(buffer.inputBuffer, output, basebuf_array[i], buffer.seqId);
+                std::get<i>(op).try_put(bufmsg_array[i]);
+            }*/              
+    }
+    private:
+
+    uint32_t nway;
+    uint32_t counter;
+    uint32_t num_record;
+};
+
+
+
 
 class BufferCompressor {
 public:
 
     BufferCompressor(uint32_t num_rcrd, int _sorttype) : num_record(num_rcrd), sort_type(_sorttype), counter(0) {}
 
+    //KeyValueRecord* operator()(BufferMsg buffer){
+    //BufferMsg operator()(BufferMsg* buffer_ptr){
     BufferMsg operator()(BufferMsg buffer){
+        //std::cout << "Sorter"<< "-";
         //std::cout << "counter: " << counter << "\n";   
-        if (!buffer.isLast) {
-            // the next line is simple bugless testing line for the whole TBB flow graph
-            //buffer.outputBuffer.b = buffer.inputBuffer.b;
-            //std::cout << "num_record: " << +num_record << "\n";
-            BaseBuffer* buf = new BaseBuffer(num_record);
-            buf->createRecords();
-            buf->setAllRecords(buffer.inputBuffer.b);
+        // the next line is simple bugless testing line for the whole TBB flow graph
+        //buffer.outputBuffer.b = buffer.inputBuffer.b;
+        //std::cout << "num_record: " << +num_record << "\n";
+        //BaseBuffer* buf = new BaseBuffer();
+        //buf->createRecords(num_record);
+        //buf->setAllRecords(buffer.inputBuffer.b);
+        //buffer.basebuf
 
-            //if(method==std_sort)
-            struct timespec ts1,ts2;
-            if(sort_type == 0){
+        struct timespec ts1,ts2;
+        if(sort_type == 0){
                 std::vector<KeyValueRecord*> ptr_list;
 
                 for(uint32_t i = 0; i < num_record; i++){
-                    KeyValueRecord* kvr = buf->getRecords(i);
+                    KeyValueRecord* kvr = buffer.basebuf->getRecords(i);
                     ptr_list.push_back(kvr);
                 }
 
@@ -187,11 +293,14 @@ public:
                 uint64_t t2 =getNanoSecond(ts2);
                 std_lantency_list.push_back(t2-t1);
 
-                uint32_t ksize = buf->getKeySize();
-                uint32_t vsize = buf->getValueSize();
+                uint32_t ksize = buffer.basebuf->getKeySize();
+                uint32_t vsize = buffer.basebuf->getValueSize();
 
                 for(uint32_t index = 0; index < num_record; index++){           
                     KeyValueRecord* kvr =ptr_list.at(index);
+                    //char MSBytes=kvr->getKey(0);
+                    //output_port = MSBytes%4;
+                    //TODO assign buffer to port out
                     //input ptrs
                     char* kptr= kvr->getKeyBuffer();
                     char* vptr = kvr->getValueBuffer();
@@ -204,13 +313,13 @@ public:
                     std::memcpy(kbase, kptr, ksize);
                     std::memcpy(vbase, vptr, vsize);    
                 }
-            }
-            else{
-                BaseBuffer* output = new BaseBuffer(num_record);
-                output->createRecords();     
-                radix_sort(buf, output, num_record);
-                uint32_t ksize = buf->getKeySize();
-                uint32_t vsize = buf->getValueSize();
+        }
+        else{
+                BaseBuffer* output = new BaseBuffer();
+                output->createRecords(num_record);     
+                //radix_sort(&buffer.basebuf, output, num_record);
+                uint32_t ksize = buffer.basebuf->getKeySize();
+                uint32_t vsize = buffer.basebuf->getValueSize();
 
                 for(uint32_t index = 0; index < num_record; index++){           
                     KeyValueRecord* kvr = output->getRecords(index);
@@ -224,12 +333,13 @@ public:
 
                     //memcpy
                     std::memcpy(kbase, kptr, ksize);
-                    std::memcpy(vbase, vptr, vsize);    
+                    std::memcpy(vbase, vptr, vsize); 
                 }
-            }        
-            //update counters and stats
-            counter++;            
         }
+        //delete buf; 
+        //delete output;      
+        //update counters and stats
+        counter++;            
         //counter++;
         return buffer;
     }
@@ -293,8 +403,9 @@ private:
         }
     }
     radix_lantency_list.push_back(t2-t1);
+    //delete BT;
     //return t2-t1;
-}
+    }
 
     static bool compareKey(KeyValueRecord* kvr1, KeyValueRecord* kvr2){
     uint32_t keysize = 10;
@@ -314,7 +425,7 @@ private:
       //std::cout << +k << " ";
     }
     return false; // false for k1 <= k2
-}
+    }
 
 
     uint32_t num_record;
@@ -369,12 +480,15 @@ typedef tbb::flow::async_node< BufferMsg, tbb::flow::continue_msg > async_file_w
 class AsyncNodeActivity {
 public:
 
-    AsyncNodeActivity(IOOperations& io)
-        : m_io(io), m_fileWriterThread(&AsyncNodeActivity::writingLoop, this) {}
+    AsyncNodeActivity(IOOperations& io, uint32_t num_record)
+        : m_io(io), m_fileWriterThread(&AsyncNodeActivity::writingLoop, this), m_num_record(num_record) {}
 
     ~AsyncNodeActivity() {
         m_fileReaderThread.join();
+        std::cout<< "fileReaderThread join:" <<  count <<"\n";
+        count++;
         m_fileWriterThread.join();
+        std::cout<< "fileWriterThread join" << "\n";
     }
 
     void submitRead(async_file_reader_node::gateway_type& gateway) {
@@ -390,7 +504,7 @@ private:
 
     void readingLoop(async_file_reader_node::gateway_type& gateway) {
         while (m_io.hasDataToRead()) {
-            BufferMsg bufferMsg = BufferMsg::createBufferMsg(m_io.chunksRead(), m_io.chunkSize());
+            BufferMsg bufferMsg = BufferMsg::createBufferMsg(m_io.chunksRead(), m_io.chunkSize(), m_num_record);
             m_io.readChunk(bufferMsg.inputBuffer);
             gateway.try_put(bufferMsg);
         }
@@ -414,6 +528,8 @@ private:
     }
 
     IOOperations& m_io;
+    int count=0;
+    uint32_t m_num_record;
 
     tbb::concurrent_bounded_queue< BufferMsg > m_writeQueue;
 
@@ -421,37 +537,120 @@ private:
     std::thread m_fileWriterThread;
 };
 
-void fgCompressionAsyncNode(IOOperations& io, uint32_t num_rcrd, int sort_type) {
+void fgCompressionAsyncNode( IOOperations& io_0, IOOperations& io_1, IOOperations& io_2, IOOperations& io_3, 
+    uint32_t num_rcrd, int sort_type) {
+
     tbb::flow::graph g;
 
-    AsyncNodeActivity asyncNodeActivity(io);
+    AsyncNodeActivity asyncNodeActivity_0(io_0, num_rcrd);
+    AsyncNodeActivity asyncNodeActivity_1(io_1, num_rcrd);
+    AsyncNodeActivity asyncNodeActivity_2(io_2, num_rcrd);
+    AsyncNodeActivity asyncNodeActivity_3(io_3, num_rcrd);
 
     /*async_file_reader_node file_reader(g, tbb::flow::unlimited, [&asyncNodeActivity](const tbb::flow::continue_msg& msg, async_file_reader_node::gateway_type& gateway) {
         asyncNodeActivity.submitRead(gateway);
     });*/
 
-    async_file_reader_node file_reader(g, 40, [&asyncNodeActivity](const tbb::flow::continue_msg& msg, async_file_reader_node::gateway_type& gateway) {
-        asyncNodeActivity.submitRead(gateway);
+    async_file_reader_node file_reader_0(g, 1, [&asyncNodeActivity_0](const tbb::flow::continue_msg& msg, async_file_reader_node::gateway_type& gateway) {
+        asyncNodeActivity_0.submitRead(gateway);
+    });
+
+    async_file_reader_node file_reader_1(g, 1, [&asyncNodeActivity_1](const tbb::flow::continue_msg& msg, async_file_reader_node::gateway_type& gateway) {
+        asyncNodeActivity_1.submitRead(gateway);
+    });
+    async_file_reader_node file_reader_2(g, 1, [&asyncNodeActivity_2](const tbb::flow::continue_msg& msg, async_file_reader_node::gateway_type& gateway) {
+        asyncNodeActivity_2.submitRead(gateway);
+    });
+
+    async_file_reader_node file_reader_3(g, 1, [&asyncNodeActivity_3](const tbb::flow::continue_msg& msg, async_file_reader_node::gateway_type& gateway) {
+        asyncNodeActivity_3.submitRead(gateway);
     });
 
     //tbb::flow::function_node< BufferMsg, BufferMsg > compressor(g, tbb::flow::unlimited, BufferCompressor(num_rcrd, sort_type));
+    //tbb::flow::function_node< BufferMsg, BufferMsg > compressor(g, 40, BufferCompressor(num_rcrd, sort_type));
+    Mapper mapper_0(g, 1, MapperOp(num_rcrd));
+    Mapper mapper_1(g, 1, MapperOp(num_rcrd));
+    Mapper mapper_2(g, 1, MapperOp(num_rcrd));
+    Mapper mapper_3(g, 1, MapperOp(num_rcrd));
 
-    tbb::flow::function_node< BufferMsg, BufferMsg > compressor(g, 40, BufferCompressor(num_rcrd, sort_type));
+    tbb::flow::function_node<BufferMsg, BufferMsg > sorter_0(g, 4, BufferCompressor(num_rcrd, sort_type));
+    tbb::flow::function_node<BufferMsg, BufferMsg > sorter_1(g, 4, BufferCompressor(num_rcrd, sort_type));
+    tbb::flow::function_node<BufferMsg, BufferMsg > sorter_2(g, 4, BufferCompressor(num_rcrd, sort_type));
+    tbb::flow::function_node<BufferMsg, BufferMsg > sorter_3(g, 4, BufferCompressor(num_rcrd, sort_type));
 
-    tbb::flow::sequencer_node< BufferMsg > ordering(g, [](const BufferMsg& bufferMsg)->size_t {
+    tbb::flow::sequencer_node< BufferMsg > ordering_0 (g, [](const BufferMsg& bufferMsg)->size_t {
+        return bufferMsg.seqId;
+    });
+    tbb::flow::sequencer_node< BufferMsg > ordering_1 (g, [](const BufferMsg& bufferMsg)->size_t {
+        return bufferMsg.seqId;
+    });
+    tbb::flow::sequencer_node< BufferMsg > ordering_2 (g, [](const BufferMsg& bufferMsg)->size_t {
+        return bufferMsg.seqId;
+    });
+    tbb::flow::sequencer_node< BufferMsg > ordering_3 (g, [](const BufferMsg& bufferMsg)->size_t {
         return bufferMsg.seqId;
     });
 
     // The node is serial to preserve the right order of buffers set by the preceding sequencer_node
-    async_file_writer_node output_writer(g, tbb::flow::serial, [&asyncNodeActivity](const BufferMsg& bufferMsg, async_file_writer_node::gateway_type& gateway) {
-        asyncNodeActivity.submitWrite(bufferMsg);
+    async_file_writer_node output_writer_0(g, tbb::flow::serial, [&asyncNodeActivity_0](const BufferMsg& bufferMsg, async_file_writer_node::gateway_type& gateway) {
+        asyncNodeActivity_0.submitWrite(bufferMsg);
+        //std::cout << "fw0 " << "\n";
+    });
+    async_file_writer_node output_writer_1(g, tbb::flow::serial, [&asyncNodeActivity_1](const BufferMsg& bufferMsg, async_file_writer_node::gateway_type& gateway) {
+        asyncNodeActivity_1.submitWrite(bufferMsg);
+        //std::cout << "fw1 " << "\n";
     });
 
-    make_edge(file_reader, compressor);
-    make_edge(compressor, ordering);
-    make_edge(ordering, output_writer);
+    async_file_writer_node output_writer_2(g, tbb::flow::serial, [&asyncNodeActivity_2](const BufferMsg& bufferMsg, async_file_writer_node::gateway_type& gateway) {
+        asyncNodeActivity_2.submitWrite(bufferMsg);
+        //std::cout << "fw2 " << "\n";
+    });
 
-    file_reader.try_put(tbb::flow::continue_msg());
+    async_file_writer_node output_writer_3(g, tbb::flow::serial, [&asyncNodeActivity_3](const BufferMsg& bufferMsg, async_file_writer_node::gateway_type& gateway) {
+        asyncNodeActivity_3.submitWrite(bufferMsg);
+        //std::cout << "fw3 " << "\n";
+    });
+
+    make_edge(file_reader_0, mapper_0);
+    make_edge(file_reader_1, mapper_1);
+    make_edge(file_reader_2, mapper_2);
+    make_edge(file_reader_3, mapper_3);
+
+    make_edge(tbb::flow::output_port<0>(mapper_0), output_writer_0);
+    make_edge(tbb::flow::output_port<1>(mapper_0), output_writer_1);
+    make_edge(tbb::flow::output_port<2>(mapper_0), output_writer_2);
+    make_edge(tbb::flow::output_port<3>(mapper_0), output_writer_3);
+
+    make_edge(tbb::flow::output_port<0>(mapper_1), output_writer_0);
+    make_edge(tbb::flow::output_port<1>(mapper_1), output_writer_1);
+    make_edge(tbb::flow::output_port<2>(mapper_1), output_writer_2);
+    make_edge(tbb::flow::output_port<3>(mapper_1), output_writer_3);
+
+    make_edge(tbb::flow::output_port<0>(mapper_2), output_writer_0);
+    make_edge(tbb::flow::output_port<1>(mapper_2), output_writer_1);
+    make_edge(tbb::flow::output_port<2>(mapper_2), output_writer_2);
+    make_edge(tbb::flow::output_port<3>(mapper_2), output_writer_3);
+
+    make_edge(tbb::flow::output_port<0>(mapper_3), output_writer_0);
+    make_edge(tbb::flow::output_port<1>(mapper_3), output_writer_1);
+    make_edge(tbb::flow::output_port<2>(mapper_3), output_writer_2);
+    make_edge(tbb::flow::output_port<3>(mapper_3), output_writer_3);
+
+    //make_edge(mapper, sorter);
+    //make_edge(sorter_0, ordering_0);
+    //make_edge(sorter_1, ordering_1);
+    //make_edge(sorter_2, ordering_2);
+    //make_edge(sorter_3, ordering_3);
+    //make_edge(ordering, output_writer);
+    //make_edge(ordering_0, output_writer_0);
+    //make_edge(ordering_1, output_writer_1);
+    //make_edge(ordering_2, output_writer_2);
+    //make_edge(ordering_3, output_writer_3);
+
+    file_reader_0.try_put(tbb::flow::continue_msg());
+    file_reader_1.try_put(tbb::flow::continue_msg());
+    file_reader_2.try_put(tbb::flow::continue_msg());
+    file_reader_3.try_put(tbb::flow::continue_msg());
 
     g.wait_for_all();
 }
@@ -493,28 +692,51 @@ int main(int argc, char* argv[]) {
         if (verbose) std::cout << "Input file name: " << inputFileName << std::endl;    
 
         std::ifstream inputStream(inputFileName.c_str(), std::ios::in | std::ios::binary);
+        //std::ifstream inputStream1(inputFileName.c_str(), std::ios::in | std::ios::binary);
+        //std::ifstream inputStream2(inputFileName.c_str(), std::ios::in | std::ios::binary);
+        //std::ifstream inputStream3(inputFileName.c_str(), std::ios::in | std::ios::binary);
+
         if (!inputStream.is_open()) {
             throw std::invalid_argument("Cannot open " + inputFileName + " file.");
         }
 
-        std::string outputFileName(inputFileName + archiveExtension);
+        //std::string outputFileName(inputFileName + archiveExtension);
+        std::string outputname[4];
+        for(int i=0; i < 4; i++){
+            std::string outputFileName(inputFileName + "_" + std::to_string(i)+ archiveExtension);
+            outputname[i] = outputFileName;
+        }
 
+        std::ofstream outputStream0(outputname[0].c_str(), std::ios::out | std::ios::binary | std::ios::trunc);    
+        std::ofstream outputStream1(outputname[1].c_str(), std::ios::out | std::ios::binary | std::ios::trunc);    
+        std::ofstream outputStream2(outputname[2].c_str(), std::ios::out | std::ios::binary | std::ios::trunc);    
+        std::ofstream outputStream3(outputname[3].c_str(), std::ios::out | std::ios::binary | std::ios::trunc);    
+
+        /*
         std::ofstream outputStream(outputFileName.c_str(), std::ios::out | std::ios::binary | std::ios::trunc);
         if (!outputStream.is_open()) {
             throw std::invalid_argument("Cannot open " + outputFileName + " file.");
-        }
+        }*/
+
+        //using IOWrapper = std::reference_wrapper<IOOperations>;
 
         // General interface to work with I/O buffers operations
         size_t chunkSize = Kbytes * 1000;
-        IOOperations io(inputStream, outputStream, chunkSize);
+        IOOperations io_0(inputStream, outputStream0, chunkSize);
+        IOOperations io_1(inputStream, outputStream1, chunkSize);
+        IOOperations io_2(inputStream, outputStream2, chunkSize);
+        IOOperations io_3(inputStream, outputStream3, chunkSize);
 
 
         if (verbose) 
             //std::cout << "Running flow graph based compression algorithm with async_node based asynchronious IO operations." << std::endl;    
-        fgCompressionAsyncNode(io, num_record, sort_type);
+        fgCompressionAsyncNode(io_0, io_1, io_2, io_3, num_record, sort_type);
 
         inputStream.close();
-        outputStream.close();
+        outputStream0.close();  
+        outputStream1.close();  
+        outputStream2.close();  
+        outputStream3.close();  
 
         utility::report_elapsed_time((tbb::tick_count::now() - mainStartTime).seconds());
 
@@ -576,10 +798,11 @@ int main(int argc, char* argv[]) {
         radix_rate_file.close();
     }
 
-        return 0;
+    return 0;
     } catch (std::exception& e) {
         std::cerr << "Error occurred. Error text is : \"" << e.what() << "\"\n";
         return -1;
     }
 }
+
 
