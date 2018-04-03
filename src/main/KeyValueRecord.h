@@ -1,12 +1,13 @@
 #ifndef KV_RECORD_H
 #define KV_RECORD_H
 
-#include <stdint.h>
-#include <stdlib.h>
+//#include <stdint.h>
+#include <cstdint>
+//#include <stdlib.h>
 
 class KeyValueRecord{
 	public:
-	KeyValueRecord();
+	KeyValueRecord(uint32_t ksize_, uint32_t vsize_);
 	~KeyValueRecord();	
 	void initRecord(uint32_t ksize_, uint32_t vsize_);
 	//TODO to be safer, use reference instead of pointer
@@ -39,8 +40,8 @@ class KeyValueRecord{
 
   	//[ uint64_t keySize, uint32_t valueSize, uint8_t* key, uint8_t* value ]
 	private:
-	char* keyBuffer;
-  	char* valueBuffer;
+	char * keyBuffer;
+  	char * valueBuffer;
   	//uint32_t keySize;
   	//uint32_t valueSize;
     bool processed;

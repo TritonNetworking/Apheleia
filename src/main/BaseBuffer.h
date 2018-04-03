@@ -2,57 +2,48 @@
 #define BASE_BUFFER_H
 
 #include <stdint.h>
-#include <stdlib.h>
-#include "tbb/tbb_allocator.h"
+#include <cstdint>
+#include <vector>
+#include "KeyValueRecord.h"
+//#include "tbb/tbb_allocator.h"
 
 class BaseBuffer{
-	public:
-	BaseBuffer(uint64_t size_){
-		size= size_;
-		buffer = new uint8_t[size];
-		memset(buffer,0,size);
-    	//buffer = (uint8_t*)malloc(size_*sizeof(uint8_t));
-    	//written=false;
-	}
+  public: 
+    BaseBuffer();
 
-	~BaseBuffer(){
-		if(buffer)
-			delete [] buffer;
-	}	
-	
-	/*
-	static BaseBuffer* allocate( size_t size_ ) {
-        // +1 leaves room for a terminating null character.
-        BaseBuffer* b = (BaseBuffer*)tbb::tbb_allocator<uint8_t>().allocate( sizeof(BaseBuffer)*size_);
-		//size = size_;
-        return b;
+    //TODO: fix deconstructors
+    ~BaseBuffer();
+
+    void createRecords(uint32_t num);
+
+    void setAllRecords(char* rawBuffer);
+
+	inline uint32_t getBufferSize(){
+      return buf_size;
     }
-    //! Free a TextSlice object 
-    void dealloc(size_t size_) {
-        tbb::tbb_allocator<uint8_t>().deallocate((uint8_t*)this,sizeof(BaseBuffer)*size_);
-    }*/
- 
-	uint8_t* getBuffer(){
-    	return buffer;
-  	}
 
-	uint64_t getSize() const {
-    	return size;
-  	}
-	/*
-  	void setWritten(bool w){
-		written=w;
-  	}
+    inline void setRecord(KeyValueRecord* kvr, int index){
+      buffer[index]=kvr;
+    }
 
-  	bool isWritten(){
-      return written;
-	}*/
+    inline KeyValueRecord* getRecords(uint32_t index){
+      return buffer[index];
+    }
 
-	private:
-  	uint8_t* buffer;
-  	uint64_t size;
-    //bool written;
-	
+    inline uint32_t getKeySize(){
+        return ksize;
+    }
+
+    inline uint32_t getValueSize(){
+        return vsize;
+    }
+
+  	private:
+  	//KeyValueRecord* buffer;
+  	std::vector<KeyValueRecord*> buffer;
+  	uint32_t ksize;
+  	uint32_t vsize;  
+  	uint32_t buf_size;
 };
 
 #endif //BASE_BUFFER

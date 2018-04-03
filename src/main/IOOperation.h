@@ -1,3 +1,4 @@
+#ifndef IO_OPERATION_H
 #define IO_OPERATION_H
 
 #include <stdint.h>
@@ -8,70 +9,7 @@
 #include <string>
 #include <memory>
 #include <random>
-#include "KeyValueRecord.h"
-
-class BaseBuffer{
-  public: 
-    BaseBuffer(uint32_t num){
-      buf_size= num;
-      buffer = new KeyValueRecord[num];
-    }
-
-    uint32_t getBufferSize(){
-      return buf_size;
-    }
-
-    void createRecords(){ //(uint32_t _ks, uint32_t _vs){
-      //ksize = _ks;
-      //vsize = _vs;
-      ksize = 10;
-      vsize= 90;
-      for(uint32_t i = 0; i < buf_size; i++){
-        buffer[i].initRecord(ksize, vsize);
-      }
-    }
-
-    void setRecord(KeyValueRecord* kvr, int index){
-      //for(int j=0; j< buf_size; j++){
-      buffer[index]=*kvr;
-      //}
-    }
-
-    void genRecordKeys(){
-      std::random_device rd;
-      std::default_random_engine gen = std::default_random_engine(rd());
-      std::uniform_int_distribution<uint8_t> dis(0,255);
-      
-      for(int j=0; j< buf_size; j++){
-        for (int index=0; index<ksize; index++){
-          buffer[j].setKey(dis(gen),index);
-        }
-      }
-      //std::cout << "some random numbers between 1 and 255: ";
-    }
-
-    void genRecordValues(){
-      std::random_device rd;
-      std::default_random_engine gen = std::default_random_engine(rd());
-      std::uniform_int_distribution<uint8_t> dis(0,255);
-      
-      for(int j=0; j< buf_size; j++){
-        for (int index=0; index<vsize; index++){
-          buffer[j].setValue(dis(gen),index);
-        }
-      }
-    }
-
-    KeyValueRecord& getRecords(uint32_t index){
-      return &(buffer[index]);
-    }
-
-  private:
-  KeyValueRecord& buffer;
-  uint32_t ksize;
-  uint32_t vsize;  
-  uint32_t buf_size;
-};
+//#include "KeyValueRecord.h"
 
 class IOOperations {
 public:
