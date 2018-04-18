@@ -1,7 +1,7 @@
 #ifndef BASE_BUFFER_H
 #define BASE_BUFFER_H
 
-#include <stdint.h>
+//#include <stdint.h>
 #include <cstdint>
 #include <vector>
 #include "KeyValueRecord.h"

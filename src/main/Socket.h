@@ -25,8 +25,8 @@ class Socket{
 	Socket* tcpAccept(uint64_t timeout, uint64_t socketBufferSize);
 	void tcpConnect(const std::string& address, const std::string& port, uint64_t socketBufferSize, uint64_t retryDelayInMicros, uint64_t maxRetry);
 	void tcpClose();
-	uint64_t tcpSend(uint8_t *buffer, uint64_t buf_size);
-	uint64_t tcpReceive(uint8_t *buffer, uint64_t buf_size);
+	uint64_t tcpSend(char* buffer, uint64_t buf_size);
+	uint64_t tcpReceive(char *buffer, uint64_t buf_size);
 	const std::string& getAddress() const;
   	int getFD() const;
 	//bool closed() const;

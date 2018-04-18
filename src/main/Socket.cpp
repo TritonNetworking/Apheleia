@@ -232,19 +232,21 @@ void Socket::tcpClose() {
   mode = NONE;
 }
 
-uint64_t Socket::tcpSend(uint8_t *buffer, uint64_t buf_size) {
+uint64_t Socket::tcpSend(char *buffer, uint64_t buf_size) {
   int64_t totalBytes = 0;
   int64_t  recv_size  = buf_size;
-  uint8_t* recvBuffer;
+  char* recvBuffer;
   int64_t numBytes;
   while(recv_size > 0){
-    recvBuffer = (uint8_t*) (buffer + totalBytes);
+    recvBuffer = (char*) (buffer + totalBytes);
     numBytes = send(fd, recvBuffer, recv_size, MSG_DONTWAIT);
+    //if(numBytes > 0)
+      //printf("num bytes %" PRId64 "\n", numBytes);
 
     if(numBytes > 0){
       totalBytes = totalBytes + numBytes;
       recv_size = recv_size - numBytes;
-      //printf("%p <- %p + %" PRId64 "\n", recvBuffer, buffer, numBytes);
+      printf("%p <- %p + %" PRId64 "\n", recvBuffer, buffer, numBytes);
     }
     else{
     //printf("send() error %d: %s", errno, strerror(errno));   
@@ -266,19 +268,19 @@ uint64_t Socket::tcpSend(uint8_t *buffer, uint64_t buf_size) {
   } 
 }
 
-uint64_t Socket::tcpReceive(uint8_t* buffer, uint64_t buf_size) {
+uint64_t Socket::tcpReceive(char* buffer, uint64_t buf_size) {
   int64_t totalBytes = 0;
   int64_t  recv_size  = buf_size;
-  uint8_t* recvBuffer;
+  char* recvBuffer;
   int64_t numBytes;
   while(recv_size > 0){
-    recvBuffer = (uint8_t*) (buffer + totalBytes);
+    recvBuffer = (char*) (buffer + totalBytes);
     numBytes = recv(fd, recvBuffer, recv_size, MSG_DONTWAIT);
 
     if(numBytes > 0){
       totalBytes = totalBytes + numBytes;
       recv_size = recv_size - numBytes;
-      //printf("%p <- %p + %" PRId64 "\n", recvBuffer, buffer, numBytes);
+      printf("%p <- %p + %" PRId64 "\n", recvBuffer, buffer, numBytes);
     }    
   }
   //ssize_t numBytes = recv(fd, buffer, buf_size, MSG_DONTWAIT);

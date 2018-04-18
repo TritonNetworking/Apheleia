@@ -23,12 +23,19 @@ public:
         m_chunksRead++;
     }
 
+    void readSocketChunk(Buffer& buffer){   
+    }
+
     void writeChunk(const Buffer& buffer) {
         m_outputStream.write(buffer.b, buffer.len);
     }
 
     size_t chunksRead() const {
         return m_chunksRead;
+    }
+
+    void incrementChunks(){
+        m_chunksRead++;
     }
 
     size_t chunkSize() const {

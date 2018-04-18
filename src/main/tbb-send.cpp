@@ -43,7 +43,7 @@ struct TupleBuffer {
 };
 
 struct Sourcer {
-	const int LIMIT = 10000;
+	const int LIMIT = 100;
 	int count;
 
 	Sourcer() {
@@ -63,11 +63,11 @@ struct Sourcer {
 };
 
 struct Sender {
-	const int LIMIT = 10000;
+	const int LIMIT = 100;
 	int count;
 	uint64_t sent_bytes;
 	std::string ipaddr= "10.1.100.31"; // server
-    std::string port="8000";
+    std::string port="8001";
     uint64_t Retry=100;
     uint64_t retryDelayInMicros=1000;
 	Socket* send_socket;
