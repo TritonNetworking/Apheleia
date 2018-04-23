@@ -158,7 +158,7 @@ void Socket::tcpConnect( const std::string& serverAddress, const std::string& se
   hints.ai_protocol = IPPROTO_TCP;
 
   int status = getaddrinfo(serverAddress.c_str(), serverPort.c_str(), &hints, &res);
-  if(status == -1){
+  if(status != 0){
   	printf("getaddrinfo() failed with error code %d: %s", errno, strerror(errno));
   	exit(1);
   }
@@ -189,12 +189,12 @@ void Socket::tcpConnect( const std::string& serverAddress, const std::string& se
   uint32_t retries = 0;
   status = -1;
   do {
-    printf("Connecting to %s:%s on socket %d", serverAddress.c_str(), serverPort.c_str(), fd);
+    printf("Connecting to %s:%s on socket %d\n", serverAddress.c_str(), serverPort.c_str(), fd);
 
     status = ::connect(fd, res->ai_addr, res->ai_addrlen);
 
     if (status == -1) {
-      printf("connect() to %s:%s failed with error %d: %s",
+      printf("connect() to %s:%s failed with error %d: %s\n",
                          serverAddress.c_str(), serverPort.c_str(), errno,
                          strerror(errno));
       usleep(retryDelayInMicros);
@@ -246,7 +246,7 @@ uint64_t Socket::tcpSend(char *buffer, uint64_t buf_size) {
     if(numBytes > 0){
       totalBytes = totalBytes + numBytes;
       recv_size = recv_size - numBytes;
-      printf("%p <- %p + %" PRId64 "\n", recvBuffer, buffer, numBytes);
+      //printf("%p <- %p + %" PRId64 "\n", recvBuffer, buffer, numBytes);
     }
     else{
     //printf("send() error %d: %s", errno, strerror(errno));   
@@ -259,6 +259,8 @@ uint64_t Socket::tcpSend(char *buffer, uint64_t buf_size) {
     } 
 
   }
+  //printf("snd %p <- %p + %" PRId64 "\n", recvBuffer, buffer, numBytes);
+  //printf("snd done, total bytes %" PRId64 "\n", totalBytes);
   //ssize_t numBytes = recv(fd, buffer, buf_size, MSG_DONTWAIT);
   if(totalBytes > 0){
     return (uint64_t) totalBytes;
@@ -273,6 +275,7 @@ uint64_t Socket::tcpReceive(char* buffer, uint64_t buf_size) {
   int64_t  recv_size  = buf_size;
   char* recvBuffer;
   int64_t numBytes;
+  //printf("rdv fd %d\n", fd);
   while(recv_size > 0){
     recvBuffer = (char*) (buffer + totalBytes);
     numBytes = recv(fd, recvBuffer, recv_size, MSG_DONTWAIT);
@@ -280,9 +283,10 @@ uint64_t Socket::tcpReceive(char* buffer, uint64_t buf_size) {
     if(numBytes > 0){
       totalBytes = totalBytes + numBytes;
       recv_size = recv_size - numBytes;
-      printf("%p <- %p + %" PRId64 "\n", recvBuffer, buffer, numBytes);
+      //printf("%p <- %p + %" PRId64 "\n", recvBuffer, buffer, numBytes);
     }    
   }
+  //printf("rcv done, total bytes %" PRId64 "\n", totalBytes);
   //ssize_t numBytes = recv(fd, buffer, buf_size, MSG_DONTWAIT);
   if(totalBytes > 0){
     return (uint64_t) totalBytes;

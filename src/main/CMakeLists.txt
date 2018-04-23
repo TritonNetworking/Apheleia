@@ -8,8 +8,10 @@
 	#add_executable(pipe_send pipeline_send.cpp Socket.cpp)	
 	#add_executable(pipe_recv pipeline_recv.cpp Socket.cpp)
 	#add_executable(pipe_test pipe_test.cpp gen_input.cpp)	
-	add_executable(split main_stage1.cpp KeyValueRecord.cpp BucketTable.cpp BaseBuffer.cpp MapperOperation.cpp Socket.cpp) 
+	#add_executable(splitter main_stage1.cpp KeyValueRecord.cpp BucketTable.cpp BaseBuffer.cpp MapperOperation.cpp Socket.cpp) 
 	#add_executable(sorter main_stage2.cpp KeyValueRecord.cpp BucketTable.cpp BaseBuffer.cpp) #BufferSorter.cpp)
+	add_executable(splitter splitter.cpp KeyValueRecord.cpp BucketTable.cpp BaseBuffer.cpp MapperOperation.cpp Socket.cpp)
+	add_executable(sorter sorter.cpp KeyValueRecord.cpp BucketTable.cpp BaseBuffer.cpp Socket.cpp) #BufferSorter.cpp)
 
 	#add_executable(main_radix main_radix.cpp KeyValueRecord.cpp BucketTable.cpp)	
 
@@ -30,10 +32,10 @@
 	#target_link_libraries(pipe_test ${TBB_IMPORTED_TARGETS})
 	#SET( CMAKE_EXE_LINKER_FLAGS "${MAKE_EXE_LINKER_FLAGS} libc.a")	
 	#target_link_libraries(sorter libc.a)	
-	#target_link_libraries(sorter ${TBB_IMPORTED_TARGETS})
+	target_link_libraries(sorter ${TBB_IMPORTED_TARGETS})
 	#MESSAGE( STATUS "**wamos**TBB_IMPORTED_TARGETS: " ${TBB_IMPORTED_TARGETS} )
     #target_link_libraries(sorter ${CMAKE_SOURCE_DIR}/libc.a)	
-	target_link_libraries(split ${TBB_IMPORTED_TARGETS})
+	target_link_libraries(splitter ${TBB_IMPORTED_TARGETS})
 	#target_link_libraries(main_radix ${TBB_IMPORTED_TARGETS})
 	
 	

@@ -63,7 +63,7 @@ private:
 
     void readingLoop(async_file_reader_node::gateway_type& gateway) {
         while (m_io.hasDataToRead()) {
-            BufferMsg bufferMsg = BufferMsg::createBufferMsg(m_io.chunksRead(), m_io.chunkSize(), m_num_record);
+            BufferMsg bufferMsg = BufferMsg::createBufferMsg(m_io.chunksRead(), m_io.chunkSize() );
             m_io.readChunk(bufferMsg.inputBuffer);
             gateway.try_put(bufferMsg);
         }
@@ -76,7 +76,7 @@ private:
         Socket* new_socket=tcp_socket->tcpAccept(timeoutInMicros, m_io.chunkSize());
         uint64_t recv_bytes = 1;
         while (recv_bytes > 0) {
-            BufferMsg bufferMsg = BufferMsg::createBufferMsg(m_io.chunksRead(), m_io.chunkSize(), m_num_record);
+            BufferMsg bufferMsg = BufferMsg::createBufferMsg(m_io.chunksRead(), m_io.chunkSize());
             uint64_t recv_bytes= new_socket->tcpReceive(bufferMsg.inputBuffer.b, m_io.chunkSize());
             bufferMsg.inputBuffer.len = (size_t) recv_bytes;
             m_io.incrementChunks();
@@ -94,7 +94,6 @@ private:
         lastMsg.inputBuffer.len=0;
         lastMsg.outputBuffer.b=NULL;
         lastMsg.outputBuffer.len=0;
-        lastMsg.basebuf=nullptr;
         gateway.try_put(lastMsg);
     }
 
@@ -124,14 +123,17 @@ public:
 
     void startWriterThread(){
         if(node_status == 0){
+            std::cout<< "sendLoop" << "\n";
             m_WriterThread= std::thread(&AsyncWriter::sendLoop, this);
         }
         else if(node_status == 1){
+            std::cout<< "writingLoop" << "\n";
             m_WriterThread= std::thread(&AsyncWriter::writingLoop, this);
         }
         else{
             std::cerr << "Network Thread Error: unknown node status\n";
         }
+        std::cout << "write thread id:" << m_WriterThread.get_id() << "\n";
     }
 
     void submitWrite(const BufferMsg& bufferMsg) {
@@ -141,6 +143,8 @@ public:
     void setNetworkConfig(std::string ip, std::string port){
         server_IP=ip;
         server_port=port;
+        //std::cout <<"server ip"<< server_IP << "\n";
+        //std::cout <<"server port"<< server_port << "\n";
     }
 
 private:
@@ -156,17 +160,21 @@ private:
     void sendLoop(){
         BufferMsg buffer;
         m_writeQueue.pop(buffer); //a waiting pop operation that waits until it can pop an item
+        std::cout << "this_thread, thread id:" << std::this_thread::get_id() << "\n";
         tcp_socket->tcpConnect(server_IP, server_port, buffer.outputBuffer.len, retryDelayInMicros, Retry);
-        uint64_t total_bytes = 0;
+        int64_t total_bytes = 0;
         while(!buffer.isLast){
-            uint64_t sent_bytes=tcp_socket->tcpSend(buffer.outputBuffer.b, buffer.outputBuffer.len);
-            if(sent_bytes == 0){
+            int64_t sent_bytes = tcp_socket->tcpSend(buffer.outputBuffer.b, buffer.outputBuffer.len);
+            if(sent_bytes <= 0){
                std::cerr << "Network Thread Error: tcp send error\n"; 
             }
             total_bytes += sent_bytes;
-            std::cout << total_bytes << "\n";
+            //std::cout << "total send bytes:" << total_bytes << "\n";
             m_writeQueue.pop(buffer);
         }
+        std::cout <<"send ends, server ip"<< server_IP;
+        std::cout <<", server port"<< server_port << "\n";
+        std::cout << "total send bytes:" << total_bytes << "\n";
         tcp_socket->tcpClose();   
     }
 
@@ -201,7 +209,7 @@ int main(int argc, char* argv[]) {
         bool verbose = true;
         uint32_t iteration;
         int sort_type;
-        int node_status = 1;
+        int node_status = 0;
         std::string self_IP = "127.0.0.1";
         std::string machine_name = "b09_27";
         std::string in_port = "8000";
@@ -269,17 +277,19 @@ int main(int argc, char* argv[]) {
                 if(itr.key() == "ip"){
                     itr_ip = itr.value();
                 }
-                else if(itr.key() == "in_port"){
+                else if(itr.key() == "inport"){
                     itr_port = itr.value();
                 }
             }
+            std::cout << itr_ip<<":"<< itr_port<< "\n";
             dst_port.emplace(itr_ip, itr_port); //insert the key-value pair in-place
         }   
 
 
         if (verbose) std::cout << "Input file name: " << inputFileName << std::endl;    
 
-        std::ifstream inputStream(inputFileName.c_str(), std::ios::in | std::ios::binary);
+        std::string inputName("/tmp/"+inputFileName);
+        std::ifstream inputStream(inputName.c_str(), std::ios::in | std::ios::binary);
 
         if (!inputStream.is_open()) {
             throw std::invalid_argument("Cannot open " + inputFileName + " file.");
@@ -287,17 +297,21 @@ int main(int argc, char* argv[]) {
 
         std::string outputname[4];
         for(int i=0; i < 4; i++){
-            std::string outputFileName(outputFilePrefix + "_" + std::to_string(i)+ archiveExtension);
+            std::string outputFileName("/tmp/"+ outputFilePrefix + "_" + std::to_string(i)+ archiveExtension);
             outputname[i] = outputFileName;
         }
 
         std::ofstream outputStream0(outputname[0].c_str(), std::ios::out | std::ios::binary | std::ios::trunc);        
         std::ofstream outputStream1(outputname[1].c_str(), std::ios::out | std::ios::binary | std::ios::trunc);        
+        std::ofstream outputStream2(outputname[2].c_str(), std::ios::out | std::ios::binary | std::ios::trunc);        
+        std::ofstream outputStream3(outputname[3].c_str(), std::ios::out | std::ios::binary | std::ios::trunc);        
 
         // General interface to work with I/O buffers operations
         size_t chunkSize = Kbytes * 1000;
         IOOperations io_0(inputStream, outputStream0, chunkSize);
         IOOperations io_1(inputStream, outputStream1, chunkSize);
+        IOOperations io_2(inputStream, outputStream2, chunkSize);
+        IOOperations io_3(inputStream, outputStream3, chunkSize);
 
         // Sender Section, node_status == 0
         tbb::flow::graph g;
@@ -320,7 +334,7 @@ int main(int argc, char* argv[]) {
         for (int i = 0; i < asyncWtrArray.size(); i++) {
             AsyncWriter aw = asyncWtrArray[i];
             async_file_writer_node output_writer(g, 4, [&afw](const BufferMsg& bufferMsg, async_file_writer_node::gateway_type& gateway) {
-                afw.submitWrite(bufferMsg);
+                afw.submitWritcreateBufferMsge(bufferMsg);
             });
             asyncFwArray.push_back(output_writer);
         }*/     
@@ -328,59 +342,65 @@ int main(int argc, char* argv[]) {
         //AsyncNodeActivity(IOOperations& io, uint32_t num_record, Socket* sock_ptr, int rcv_or_snd)
         AsyncReader asyncreader_0(io_0, num_record, r_sock, node_status);
 
+        // to write locally, node_status = 1;
         //TODO make these async_writers and output_writers as array if we want to scale
         Socket* w_sock_0 = new Socket();
         Socket* w_sock_1 = new Socket();
-        Socket* w_sock_2 = new Socket();
-        Socket* w_sock_3 = new Socket();
-        AsyncWriter asyncwriter_0(io_1, num_record, w_sock_0,  node_status);
+        //Socket* w_sock_2 = new Socket();
+        //Socket* w_sock_3 = new Socket();
+        AsyncWriter asyncwriter_0(io_0, num_record, w_sock_0,  node_status);
         AsyncWriter asyncwriter_1(io_1, num_record, w_sock_1,  node_status);
-        AsyncWriter asyncwriter_2(io_1, num_record, w_sock_2,  node_status);
-        AsyncWriter asyncwriter_3(io_1, num_record, w_sock_3,  node_status);
+        //AsyncWriter asyncwriter_2(io_2, num_record, w_sock_2,  node_status);
+        //AsyncWriter asyncwriter_3(io_3, num_record, w_sock_3,  node_status);
         auto it = dst_port.begin();
         asyncwriter_0.setNetworkConfig(it->first,it->second);
+        //std::cout << "port:" << it->second << "\n";
         ++it;
         asyncwriter_1.setNetworkConfig(it->first,it->second);
-        ++it;
-        asyncwriter_2.setNetworkConfig(it->first,it->second);
-        ++it;
-        asyncwriter_3.setNetworkConfig(it->first,it->second);
+        //std::cout << "port:" << it->second << "\n";
+        //++it;
+        //asyncwriter_2.setNetworkConfig(it->first,it->second);
+        //++it;
+        //asyncwriter_3.setNetworkConfig(it->first,it->second);
 
         asyncwriter_0.startWriterThread(); 
         asyncwriter_1.startWriterThread(); 
-        asyncwriter_2.startWriterThread(); 
-        asyncwriter_3.startWriterThread(); 
+        //asyncwriter_2.startWriterThread(); 
+        //asyncwriter_3.startWriterThread(); 
 
         async_file_reader_node file_reader_0(g, 4, [&asyncreader_0](const tbb::flow::continue_msg& msg, async_file_reader_node::gateway_type& gateway) {
             asyncreader_0.submitRead(gateway);
         });
 
 
-        Mapper mapper_0(g, 4, MapperOperation(num_record));
+        Mapper mapper_0(g, 1, MapperOperation(num_record));
 
         /*tbb::flow::sequencer_node< BufferMsg > ordering_0 (g, [](const BufferMsg& bufferMsg)->size_t {
             return bufferMsg.seqId;
         });*/
 
-        async_file_writer_node output_writer_0(g, 4, [&asyncwriter_0](const BufferMsg& bufferMsg, async_file_writer_node::gateway_type& gateway) {
+        async_file_writer_node output_writer_0(g, 1, [&asyncwriter_0](const BufferMsg& bufferMsg, async_file_writer_node::gateway_type& gateway) {
             asyncwriter_0.submitWrite(bufferMsg);
         });
-        async_file_writer_node output_writer_1(g, 4, [&asyncwriter_1](const BufferMsg& bufferMsg, async_file_writer_node::gateway_type& gateway) {
+        async_file_writer_node output_writer_1(g, 1, [&asyncwriter_1](const BufferMsg& bufferMsg, async_file_writer_node::gateway_type& gateway) {
             asyncwriter_1.submitWrite(bufferMsg);
         });
-        async_file_writer_node output_writer_2(g, 4, [&asyncwriter_2](const BufferMsg& bufferMsg, async_file_writer_node::gateway_type& gateway) {
+        /*
+        async_file_writer_node output_writer_2(g, 1, [&asyncwriter_2](const BufferMsg& bufferMsg, async_file_writer_node::gateway_type& gateway) {
             asyncwriter_2.submitWrite(bufferMsg);
         });
-        async_file_writer_node output_writer_3(g, 4, [&asyncwriter_3](const BufferMsg& bufferMsg, async_file_writer_node::gateway_type& gateway) {
+        async_file_writer_node output_writer_3(g, 1, [&asyncwriter_3](const BufferMsg& bufferMsg, async_file_writer_node::gateway_type& gateway) {
             asyncwriter_3.submitWrite(bufferMsg);
-        });
+        });*/
 
+        //node_status=0;
        if(node_status == 0){
+            //make_edge(file_reader_0, output_writer_0);
             make_edge(file_reader_0, mapper_0);
             make_edge(tbb::flow::output_port<0>(mapper_0), output_writer_0);
             make_edge(tbb::flow::output_port<1>(mapper_0), output_writer_1);
-            make_edge(tbb::flow::output_port<2>(mapper_0), output_writer_2);
-            make_edge(tbb::flow::output_port<3>(mapper_0), output_writer_3);
+            //make_edge(tbb::flow::output_port<2>(mapper_0), output_writer_2);
+            //make_edge(tbb::flow::output_port<3>(mapper_0), output_writer_3);
             //trigger the file reader and 
             file_reader_0.try_put(tbb::flow::continue_msg());
             g.wait_for_all();
@@ -389,8 +409,8 @@ int main(int argc, char* argv[]) {
         inputStream.close();
         outputStream0.close();  
         outputStream1.close();  
-        //outputStream2.close();  
-        //outputStream3.close();  
+        outputStream2.close();  
+        outputStream3.close();  
 
         utility::report_elapsed_time((tbb::tick_count::now() - mainStartTime).seconds());
 

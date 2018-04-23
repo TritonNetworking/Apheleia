@@ -18,7 +18,7 @@ class BaseBuffer{
 
     void setAllRecords(char* rawBuffer);
 
-	inline uint32_t getBufferSize(){
+	  inline uint32_t getBufferSize(){
       return buf_size;
     }
 
