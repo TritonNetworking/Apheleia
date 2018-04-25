@@ -346,27 +346,29 @@ int main(int argc, char* argv[]) {
         //TODO make these async_writers and output_writers as array if we want to scale
         Socket* w_sock_0 = new Socket();
         Socket* w_sock_1 = new Socket();
-        //Socket* w_sock_2 = new Socket();
-        //Socket* w_sock_3 = new Socket();
-        AsyncWriter asyncwriter_0(io_0, num_record, w_sock_0,  node_status);
+        Socket* w_sock_2 = new Socket();
+        Socket* w_sock_3 = new Socket();
+        AsyncWriter asyncwriter_0(io_1, num_record, w_sock_0,  node_status);
         AsyncWriter asyncwriter_1(io_1, num_record, w_sock_1,  node_status);
-        //AsyncWriter asyncwriter_2(io_2, num_record, w_sock_2,  node_status);
-        //AsyncWriter asyncwriter_3(io_3, num_record, w_sock_3,  node_status);
+        AsyncWriter asyncwriter_2(io_1, num_record, w_sock_2,  node_status);
+        AsyncWriter asyncwriter_3(io_1, num_record, w_sock_3,  node_status);
         auto it = dst_port.begin();
         asyncwriter_0.setNetworkConfig(it->first,it->second);
         //std::cout << "port:" << it->second << "\n";
         ++it;
         asyncwriter_1.setNetworkConfig(it->first,it->second);
         //std::cout << "port:" << it->second << "\n";
-        //++it;
-        //asyncwriter_2.setNetworkConfig(it->first,it->second);
-        //++it;
-        //asyncwriter_3.setNetworkConfig(it->first,it->second);
+        ++it;
+        asyncwriter_2.setNetworkConfig(it->first,it->second);
+        //std::cout << "port:" << it->second << "\n";
+        ++it;
+        asyncwriter_3.setNetworkConfig(it->first,it->second);
+        //std::cout << "port:" << it->second << "\n";
 
         asyncwriter_0.startWriterThread(); 
         asyncwriter_1.startWriterThread(); 
-        //asyncwriter_2.startWriterThread(); 
-        //asyncwriter_3.startWriterThread(); 
+        asyncwriter_2.startWriterThread(); 
+        asyncwriter_3.startWriterThread(); 
 
         async_file_reader_node file_reader_0(g, 4, [&asyncreader_0](const tbb::flow::continue_msg& msg, async_file_reader_node::gateway_type& gateway) {
             asyncreader_0.submitRead(gateway);
@@ -385,13 +387,13 @@ int main(int argc, char* argv[]) {
         async_file_writer_node output_writer_1(g, 1, [&asyncwriter_1](const BufferMsg& bufferMsg, async_file_writer_node::gateway_type& gateway) {
             asyncwriter_1.submitWrite(bufferMsg);
         });
-        /*
+        
         async_file_writer_node output_writer_2(g, 1, [&asyncwriter_2](const BufferMsg& bufferMsg, async_file_writer_node::gateway_type& gateway) {
             asyncwriter_2.submitWrite(bufferMsg);
         });
         async_file_writer_node output_writer_3(g, 1, [&asyncwriter_3](const BufferMsg& bufferMsg, async_file_writer_node::gateway_type& gateway) {
             asyncwriter_3.submitWrite(bufferMsg);
-        });*/
+        });
 
         //node_status=0;
        if(node_status == 0){
@@ -399,8 +401,8 @@ int main(int argc, char* argv[]) {
             make_edge(file_reader_0, mapper_0);
             make_edge(tbb::flow::output_port<0>(mapper_0), output_writer_0);
             make_edge(tbb::flow::output_port<1>(mapper_0), output_writer_1);
-            //make_edge(tbb::flow::output_port<2>(mapper_0), output_writer_2);
-            //make_edge(tbb::flow::output_port<3>(mapper_0), output_writer_3);
+            make_edge(tbb::flow::output_port<2>(mapper_0), output_writer_2);
+            make_edge(tbb::flow::output_port<3>(mapper_0), output_writer_3);
             //trigger the file reader and 
             file_reader_0.try_put(tbb::flow::continue_msg());
             g.wait_for_all();

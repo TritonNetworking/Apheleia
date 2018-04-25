@@ -37,10 +37,10 @@ Socket::~Socket() {
 }
 
 void Socket::tcpListen(const std::string& port, int backlogSize) {
-	if(mode != NONE){
+	/*if(mode != NONE){
 		std::cout << "Cannot call listen() on an open socket." << "\n";
 		exit(1);
-	}
+	}*/
 	mode = LISTENING;
 
 	fd = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);

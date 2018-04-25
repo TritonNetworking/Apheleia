@@ -251,8 +251,8 @@ private:
     void receiveLoop(async_file_reader_node::gateway_type& gateway){
         int64_t recv_bytes = 0;
         int64_t total_bytes=0;
-        while (total_bytes < 32000000) {
-            tcp_socket->tcpListen(server_port, backlogSize);
+        tcp_socket->tcpListen(server_port, backlogSize);
+        while (total_bytes < 64000000) {
             Socket* new_socket = tcp_socket->tcpAccept(timeoutInMicros, m_io.chunkSize());
             int64_t loop_bytes = 0;
             while (loop_bytes < 16000000) {
@@ -267,10 +267,10 @@ private:
             }
             std::cout << "per loop bytes:" << loop_bytes << "\n";
             new_socket->tcpClose();
-            tcp_socket->tcpClose();
             std::cout << "client addr" << new_socket->getAddress() << "\n";
             std::cout << "recv socket close" << new_socket << "\n";
         }
+        tcp_socket->tcpClose(); // ERROR:possible connection reset errors comes from here, locking?
 
         std::cout << "total recv bytes:" << total_bytes << "\n";
         sendLastMessage(gateway);
@@ -562,9 +562,10 @@ int main(int argc, char* argv[]) {
 
         //node_status=0;
        if(node_status == 1){
-            make_edge(file_reader_0, output_writer_0);
+            //make_edge(file_reader_0, output_writer_0);
+            make_edge(file_reader_0, sorter_0);
             //make_edge(sorter_0, ordering_0);
-            //make_edge(sorter_0, output_writer_0);
+            make_edge(sorter_0, output_writer_0);
             //trigger the file reader and 
             file_reader_0.try_put(tbb::flow::continue_msg());
             g.wait_for_all();
