@@ -9,6 +9,7 @@
 #include <string>
 #include <memory>
 #include <random>
+#include "BufferMsg.h"
 //#include "KeyValueRecord.h"
 
 class IOOperations {
