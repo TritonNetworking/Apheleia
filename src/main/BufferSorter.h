@@ -22,12 +22,12 @@ class BufferSorter {
 public:
     BufferSorter(uint32_t num_rcrd, int _sorttype);
     BufferMsg operator()(BufferMsg buffer);
-    std::vector<uint64_t> std_lantency_list;
-	std::vector<uint64_t> radix_lantency_list;
-	std::vector<double> std_rate_list;
-	std::vector<double> radix_rate_list;
+  //std::vector<uint64_t> std_lantency_list;
+	//std::vector<uint64_t> radix_lantency_list;
+	//std::vector<double> std_rate_list;
+	//std::vector<double> radix_rate_list;
 
-private:
+
 	uint64_t getNanoSecond(struct timespec tp);
 	void radix_sort(BaseBuffer* buf, BaseBuffer* output, uint32_t num_record);
 	static bool compareKey(KeyValueRecord* kvr1, KeyValueRecord* kvr2){
@@ -49,7 +49,8 @@ private:
     	}
     	return false; // false for k1 <= k2
 	}
-
+  
+private:
 	uint32_t num_record;
     int sort_type;
     uint32_t counter;

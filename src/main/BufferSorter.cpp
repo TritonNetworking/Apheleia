@@ -14,18 +14,18 @@ BufferMsg BufferSorter::operator()(BufferMsg buffer){
         //std::cout << "counter: " << counter << "\n";   
         // the next line is simple bugless testing line for the whole TBB flow graph
         //buffer.outputBuffer.b = buffer.inputBuffer.b;
-        //std::cout << "num_record: " << +num_record << "\n";
-        //BaseBuffer* buf = new BaseBuffer();
-        //buf->createRecords(num_record);
-        //buf->setAllRecords(buffer.inputBuffer.b);
-        //buffer.basebuf
+    std::cout << "num_record: " << +num_record << "\n";
+    BaseBuffer* basebuf = new BaseBuffer();
+    basebuf->createRecords(num_record);
+    basebuf->setAllRecords(buffer.inputBuffer.b);
+
 	if(!buffer.isLast){
         struct timespec ts1,ts2;
         if(sort_type == 0){
                 std::vector<KeyValueRecord*> ptr_list;
 
                 for(uint32_t i = 0; i < num_record; i++){
-                    KeyValueRecord* kvr = buffer.basebuf->getRecords(i);
+                    KeyValueRecord* kvr = basebuf->getRecords(i);
                     ptr_list.push_back(kvr);
                 }
 
@@ -34,8 +34,8 @@ BufferMsg BufferSorter::operator()(BufferMsg buffer){
                 uint64_t t2 =getNanoSecond(ts2);
                 std_lantency_list.push_back(t2-t1);
 
-                uint32_t ksize = buffer.basebuf->getKeySize();
-                uint32_t vsize = buffer.basebuf->getValueSize();
+                uint32_t ksize = basebuf->getKeySize();
+                uint32_t vsize = basebuf->getValueSize();
 
                 for(uint32_t index = 0; index < num_record; index++){           
                     KeyValueRecord* kvr =ptr_list.at(index);
@@ -52,9 +52,9 @@ BufferMsg BufferSorter::operator()(BufferMsg buffer){
         else{
                 BaseBuffer* output = new BaseBuffer();
                 output->createRecords(num_record);     
-                //radix_sort(&buffer.basebuf, output, num_record);
-                uint32_t ksize = buffer.basebuf->getKeySize();
-                uint32_t vsize = buffer.basebuf->getValueSize();
+                radix_sort(basebuf, output, num_record);
+                uint32_t ksize = basebuf->getKeySize();
+                uint32_t vsize = basebuf->getValueSize();
 
                 for(uint32_t index = 0; index < num_record; index++){           
                     KeyValueRecord* kvr = output->getRecords(index);

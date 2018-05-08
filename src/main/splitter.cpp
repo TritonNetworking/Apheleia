@@ -67,7 +67,7 @@ int main(int argc, char* argv[]) {
             utility::cli_argument_pack()
             //"-h" option for displaying help is present implicitly
             .arg(Kbytes, "-b", "\t buffer size in KB")
-            .arg(sort_type, "-s", "\t numbers of iterations that our sort run")
+            .arg(sort_type, "-s", "\t type of sort")
             .arg(node_status, "-n", "the node is either sender or receiver")
             .arg(machine_name, "-m", "the machine name")
             .arg(configFileName, "-cfg", "config file name")
@@ -142,15 +142,15 @@ int main(int argc, char* argv[]) {
 
         std::ofstream outputStream0(outputname[0].c_str(), std::ios::out | std::ios::binary | std::ios::trunc);        
         std::ofstream outputStream1(outputname[1].c_str(), std::ios::out | std::ios::binary | std::ios::trunc);        
-        std::ofstream outputStream2(outputname[2].c_str(), std::ios::out | std::ios::binary | std::ios::trunc);        
-        std::ofstream outputStream3(outputname[3].c_str(), std::ios::out | std::ios::binary | std::ios::trunc);        
+        //std::ofstream outputStream2(outputname[2].c_str(), std::ios::out | std::ios::binary | std::ios::trunc);        
+        //std::ofstream outputStream3(outputname[3].c_str(), std::ios::out | std::ios::binary | std::ios::trunc);        
 
         // General interface to work with I/O buffers operations
         size_t chunkSize = Kbytes * 1000;
         IOOperations io_0(inputStream, outputStream0, chunkSize);
         IOOperations io_1(inputStream, outputStream1, chunkSize);
-        IOOperations io_2(inputStream, outputStream2, chunkSize);
-        IOOperations io_3(inputStream, outputStream3, chunkSize);
+        //IOOperations io_2(inputStream, outputStream2, chunkSize);
+        //IOOperations io_3(inputStream, outputStream3, chunkSize);
 
         // Sender Section, node_status == 0
         tbb::flow::graph g;
@@ -250,8 +250,8 @@ int main(int argc, char* argv[]) {
         inputStream.close();
         outputStream0.close();  
         outputStream1.close();  
-        outputStream2.close();  
-        outputStream3.close();  
+        //outputStream2.close();  
+        //outputStream3.close();  
 
         utility::report_elapsed_time((tbb::tick_count::now() - mainStartTime).seconds());
 

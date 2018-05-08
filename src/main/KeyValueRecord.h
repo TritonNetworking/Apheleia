@@ -7,6 +7,7 @@
 
 class KeyValueRecord{
 	public:
+	KeyValueRecord();	
 	KeyValueRecord(uint32_t ksize_, uint32_t vsize_);
 	~KeyValueRecord();	
 	void initRecord(uint32_t ksize_, uint32_t vsize_);
@@ -25,6 +26,14 @@ class KeyValueRecord{
 
 	inline char* getValueBuffer(){
 		return valueBuffer;
+	}
+
+	inline void setKeyWithIndex(char k, int index){
+		keyBuffer[index] = k;
+	}
+
+	inline void setValueWithIndex(char v, int index){
+		valueBuffer[index] = v;
 	}
 
 	inline void setKey(char* key){

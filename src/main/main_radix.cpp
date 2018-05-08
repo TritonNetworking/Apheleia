@@ -44,11 +44,11 @@ class BaseBuffer{
     void genRecordKeys(){
       std::random_device rd;
       std::default_random_engine gen = std::default_random_engine(rd());
-      std::uniform_int_distribution<uint8_t> dis(0,255);
+      std::uniform_int_distribution<char> dis(0,255);
       
       for(int j=0; j< buf_size; j++){
         for (int index=0; index<ksize; index++){
-          buffer[j].setKey(dis(gen),index);
+          buffer[j].setKeyWithIndex(dis(gen),index);
         }
       }
       //std::cout << "some random numbers between 1 and 255: ";
@@ -57,11 +57,11 @@ class BaseBuffer{
     void genRecordValues(){
       std::random_device rd;
       std::default_random_engine gen = std::default_random_engine(rd());
-      std::uniform_int_distribution<uint8_t> dis(0,255);
+      std::uniform_int_distribution<char> dis(0,255);
       
       for(int j=0; j< buf_size; j++){
         for (int index=0; index<vsize; index++){
-          buffer[j].setValue(dis(gen),index);
+          buffer[j].setValueWithIndex(dis(gen),index);
         }
       }
     }
@@ -111,12 +111,12 @@ inline uint64_t radix_sort(BaseBuffer* buf, BaseBuffer* output, uint32_t num_rec
   //std::cout << "records are unsorted" << "\n";
   for(uint32_t i = 0; i < num_record; i++){
     KeyValueRecord* kvr = buf->getRecords(i);
-    for(uint32_t j = 0; j < keysize; j++){
+    /*for(uint32_t j = 0; j < keysize; j++){
       uint8_t k = kvr->getKey(j);
       //printf("%" PRIu8 " ",k);
-      //std::cout << +k << " ";
+      std::cout << +k << " ";
     }
-    //std::cout << "\n";
+    std::cout << "\n";*/
   }
 
   // simple sort test with Bucket and BT.
@@ -149,15 +149,15 @@ for(int digit = keysize - 2; digit >= 0; digit--){
     Bucket* bckt = BT->getBucket(b_index);
     bckt->setRecordCount();
     uint32_t num= bckt->getRecordCount();
+    //std::cout << "Num " << +num << " ";
     // Iterate over Records in a bucket
     for(uint32_t r_index=0; r_index < num; r_index++){
-        //std::cout << "Num " << +num << " ";
         //std::cout << "bucket " << +b_index << ":";
         //std::cout << "digit " << +digit << "\n";
         KeyValueRecord* pop_kvr = bckt->popEntry();
         //std::cout << "digit:" << digit << "\n";
         uint8_t key = pop_kvr->getKey(digit);
-        //printf("%" PRIu8 "\n",key);
+        //***printf("digit: %d, key %" PRIu8 "\n", digit, key);
         Bucket* new_bckt = BT->getBucket(key);
         new_bckt->pushEntry(pop_kvr);
     }
@@ -185,7 +185,6 @@ for(uint32_t b_index=0; b_index < radix; b_index++){
           std::cout << +k << " ";
         }
         std::cout << "\n";*/
-        //printf("%" PRIu8 "\n",key);
         output->setRecord(pop_kvr, index);
         index++;
     }
@@ -194,16 +193,22 @@ for(uint32_t b_index=0; b_index < radix; b_index++){
 
 return t2-t1;
 
-//std::cout << "records are sorted"<< "\n";
-/*for(uint32_t i = 0; i < num_record; i++){
+std::cout << "records are sorted"<< "\n";
+for(uint32_t i = 0; i < num_record - 1; i++){
     //std::cout << "sorted record " << +i << "\n";
     KeyValueRecord* kvr = output->getRecords(i);
-    for(uint32_t j = 0; j < keysize; j++){
-      uint8_t k = kvr->getKey(j);
-      std::cout << +k << " ";
+    KeyValueRecord* kvr2 = output->getRecords(i+1);
+    if( compareKey(kvr,kvr2) == false){
+      //std::cout << "unsorted" << " ";
+      std::cout << "unsorted record " << +i << "\n";
+      //std::cout << "unsorted record " << +i << "\n";
+      for(uint32_t j = 0; j < keysize; j++){
+        uint8_t k = kvr->getKey(j);
+        std::cout << +k << " ";
+      }
+      std::cout << "\n";
     }
-    std::cout << "\n";
-}*/
+}
 //std::cout << "sorted radix sort record ends"<< "\n";
 
 
@@ -287,7 +292,7 @@ int main(int argc, char** argv) {
   uint64_t sorted_bits= 8*Kbytes*1000;
   double sort_rate=0; 
 
-  std::string extension = ".txt";
+  /*std::string extension = ".txt";
   std::string std_time_str = "std_time_iter_" + std::to_string(iteration) + 
     "_buffer_" + std::to_string(Kbytes) + extension;
 
@@ -298,15 +303,15 @@ int main(int argc, char** argv) {
     "_buffer_" + std::to_string(Kbytes) + extension; 
 
   std::string radix_rate_str = "radix_rate_iter_" + std::to_string(iteration) + 
-    "_buffer_" + std::to_string(Kbytes) + extension;  
+    "_buffer_" + std::to_string(Kbytes) + extension; */
 
 
-  std_time_file.open(std_time_str);
+  /*std_time_file.open(std_time_str);
   std_rate_file.open(std_rate_str);
   radix_time_file.open(radix_time_str);
-  radix_rate_file.open(radix_rate_str);
+  radix_rate_file.open(radix_rate_str);*/
 
-  for(uint64_t i = 0; i < iteration; i ++){
+  /*for(uint64_t i = 0; i < iteration; i ++){
     uint64_t t1 =getNanoSecond(ts1);
     uint64_t sort_time=std_sort(buf, output, num_record);
     uint64_t t2 =getNanoSecond(ts2);
@@ -317,22 +322,23 @@ int main(int argc, char** argv) {
     std_rate_file << sort_rate << "\n";
     //std_lantency_list.push_back(sort_time);
     //std_rate_list.push_back(sort_rate);
-  }
+  }*/
 
   for(uint64_t i = 0; i < iteration; i ++){
+    std::cout << " radix sort\n";
     uint64_t t1 =getNanoSecond(ts3);
     uint64_t sort_time=radix_sort(buf, output, num_record);
     uint64_t t2 =getNanoSecond(ts4);
     uint64_t all_time = t2 - t1;
-    sum_radix_time = sum_radix_time + sort_time;
-    radix_time_file << sort_time << "\n";
-    sort_rate=(double)sorted_bits/(double)sort_time; 
-    radix_rate_file << sort_rate << "\n";
+    //sum_radix_time = sum_radix_time + sort_time;
+    //radix_time_file << sort_time << "\n";
+    //sort_rate=(double)sorted_bits/(double)sort_time; 
+    //radix_rate_file << sort_rate << "\n";
     //radix_rate_list.push_back(sort_rate);
     //radix_lantency_list.push_back(sort_time);
   }
 
-  double mean_std_time = (double) sum_std_time / (double) iteration;
+  /*double mean_std_time = (double) sum_std_time / (double) iteration;
   double mean_radix_time = (double) sum_radix_time / (double) iteration;
   std::cout<< "mean std sort time: " << mean_std_time << "\n";
   std::cout<< "mean radix sort time: " << mean_radix_time << "\n";
@@ -340,7 +346,7 @@ int main(int argc, char** argv) {
   std_time_file.close();
   std_rate_file.close();
   radix_time_file.close();
-  radix_rate_file.close();
+  radix_rate_file.close();*/
 
   return 0;
 }

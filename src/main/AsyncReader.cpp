@@ -22,7 +22,7 @@ void AsyncReader::submitRead(async_file_reader_node::gateway_type& gateway) {
         else if(node_status == 1){
             std::thread(&AsyncReader::receiveLoop, this, std::ref(gateway)).swap(m_ReaderThread);
         }
-        std::cout << "this_thread, thread id:" << std::this_thread::get_id() << "\n";
+        std::cout << "read thread id:" << std::this_thread::get_id() << "\n";
 }
 
 void AsyncReader::setNetworkConfig(std::string ip, std::string port){
@@ -32,11 +32,18 @@ void AsyncReader::setNetworkConfig(std::string ip, std::string port){
 
 
 void AsyncReader::readingLoop(async_file_reader_node::gateway_type& gateway) {
-        while (m_io.hasDataToRead()) {
+       std::cout << "reading loop num_record:" <<  m_num_record << "\n";
+       int loop_counter = 0;
+       int iters = (int) m_io.getReadmIters();
+        //while (m_io.hasDataToRead()) {
+       std::cout << "read iters:" << iters << "\n";
+        for(int i = 0; i< iters; i++){
             BufferMsg bufferMsg = BufferMsg::createBufferMsg(m_io.chunksRead(), m_io.chunkSize());
             m_io.readChunk(bufferMsg.inputBuffer);
             gateway.try_put(bufferMsg);
+            loop_counter++;
         }
+        std::cout << "read loop counter:" <<  loop_counter << "\n";
         sendLastMessage(gateway);
         gateway.release_wait();
 }

@@ -46,12 +46,14 @@ BufferMsg operator()(BufferMsg buffer){
         //std::cout << "Sorter"<< "-";
         //std::cout << "counter: " << counter << "\n";   
         // the next line is simple bugless testing line for the whole TBB flow graph
-        //buffer.outputBuffer.b = buffer.inputBuffer.b;
-        //std::cout << "num_record: " << +num_record << "\n";
-        BaseBuffer* basebuf = new BaseBuffer();
-        basebuf->createRecords(num_record);
-        basebuf->setAllRecords(buffer.inputBuffer.b);
-        //buffer.basebuf
+    //buffer.outputBuffer.b = buffer.inputBuffer.b;
+     //std::cout << "num_record: " << +num_record << "\n";
+
+     BaseBuffer* basebuf = new BaseBuffer();
+     basebuf->createRecords(num_record);
+     std::cout << "num_record: " << +num_record << "\n";
+     basebuf->setAllRecords(buffer.inputBuffer.b);
+     //buffer.basebuf
     if(!buffer.isLast){
         struct timespec ts1,ts2;
         if(sort_type == 0){
@@ -69,6 +71,21 @@ BufferMsg operator()(BufferMsg buffer){
 
                 uint32_t ksize = basebuf->getKeySize();
                 uint32_t vsize = basebuf->getValueSize();
+                for(uint32_t i = 0; i < num_record - 1; i++){
+                    //std::cout << "sorted record " << +i << "\n";
+                    KeyValueRecord* kvr =ptr_list.at(i);
+                    KeyValueRecord* kvr2 =ptr_list.at(i+1);
+                    if( compareKey(kvr,kvr2) == false){
+                        //std::cout << "unsorted" << " ";
+                        std::cout << "unsorted record " << +i << "\n";
+                        for(uint32_t j = 0; j < ksize; j++){
+                            uint8_t k = kvr->getKey(j);
+                            std::cout << +k << " ";
+                        }
+                        std::cout << "\n";
+                    }
+                }
+
 
                 for(uint32_t index = 0; index < num_record; index++){           
                     KeyValueRecord* kvr =ptr_list.at(index);
@@ -91,6 +108,11 @@ BufferMsg operator()(BufferMsg buffer){
 
                 for(uint32_t index = 0; index < num_record; index++){           
                     KeyValueRecord* kvr = output->getRecords(index);
+                    for(uint32_t j = 0; j < ksize; j++){
+                        uint8_t k = kvr->getKey(j);
+                        std::cout << +k << " ";
+                    }
+                    std::cout << "\n";
                     //input ptrs
                     char* kptr= kvr->getKeyBuffer();
                     char* vptr = kvr->getValueBuffer();
@@ -118,7 +140,7 @@ private:
     }
 
 
-    void radix_sort(BaseBuffer* buf, BaseBuffer* output, uint32_t num_record){
+void radix_sort(BaseBuffer* buf, BaseBuffer* output, uint32_t num_record){
     //#ifndef RADIX
     uint32_t keysize = 10;
     uint32_t valuesize = 90;
@@ -132,19 +154,26 @@ private:
     BT->setValueSize(valuesize);
     BT->allocBuckets();
 
+    std::cout << "unsorted data";
     for(uint32_t i = 0; i < num_record; i++){
         KeyValueRecord* kvr = buf->getRecords(i);
+        /*for(uint32_t j = 0; j < keysize; j++){
+            uint8_t k = kvr->getKey(j);
+            std::cout << +k << " ";
+        }
+        std::cout << "\n";*/
         BT->distributeBuffer(kvr); // digit = keysize-1 used here
     }
 
     uint64_t t1 =getNanoSecond(ts1);  
 
     for(int digit = keysize - 2; digit >= 0; digit--){ 
-    //std::cout << "digit:" << digit << "\n";
+        //std::cout << "digit:" << digit << "\n";
         for(uint32_t b_index=0; b_index < radix; b_index++){
             Bucket* bckt = BT->getBucket(b_index);
             bckt->setRecordCount();
             uint32_t num= bckt->getRecordCount();
+            //std::cout << "b number" << +num << "\n";
             // Iterate over Records in a bucket
             for(uint32_t r_index=0; r_index < num; r_index++){
                 KeyValueRecord* pop_kvr = bckt->popEntry();
@@ -159,9 +188,11 @@ private:
 
     int index=0;
     for(uint32_t b_index=0; b_index < radix; b_index++){
+        //std::cout << "b_index" << +b_index << "\n";
         Bucket* bckt = BT->getBucket(b_index);
         bckt->setRecordCount();
         uint32_t num= bckt->getRecordCount();
+        //std::cout << "b number" << +num << "\n";
         // Iterate over Records in a bucket
         for(uint32_t r_index=0; r_index < num; r_index++){
             KeyValueRecord* pop_kvr = bckt->getEntry(r_index);
@@ -172,7 +203,21 @@ private:
     radix_lantency_list.push_back(t2-t1);
     //delete BT;
     //return t2-t1;
-    }
+    /*for(uint32_t i = 0; i < num_record - 1; i++){
+        std::cout << "sorted record " << +i << "\n";
+        KeyValueRecord* kvr = output->getRecords(i);
+        KeyValueRecord* kvr2 = output->getRecords(i+1);
+        //if( compareKey(kvr,kvr2) == false){
+        //std::cout << "unsorted record " << +i << "\n";
+        for(uint32_t j = 0; j < keysize; j++){
+            uint8_t k = kvr->getKey(j);
+            std::cout << +k << " ";
+        }
+        std::cout << "\n";
+        //}
+    }*/
+
+}
 
     static bool compareKey(KeyValueRecord* kvr1, KeyValueRecord* kvr2){
     uint32_t keysize = 10;
@@ -237,7 +282,7 @@ int main(int argc, char* argv[]) {
             utility::cli_argument_pack()
             //"-h" option for displaying help is present implicitly
             .arg(Kbytes, "-b", "\t buffer size in KB")
-            .arg(sort_type, "-s", "\t numbers of iterations that our sort run")
+            .arg(sort_type, "-s", "\t type of sort")
             .arg(node_status, "-n", "the node is either sender or receiver")
             .arg(machine_name, "-m", "the machine name")
             .arg(configFileName, "-cfg", "config file name")
@@ -310,15 +355,15 @@ int main(int argc, char* argv[]) {
             outputname[i] = outputFileName;
         }
 
-        std::ofstream outputStream0(outputname[0].c_str(), std::ios::out | std::ios::binary | std::ios::trunc);        
-        std::ofstream outputStream1(outputname[1].c_str(), std::ios::out | std::ios::binary | std::ios::trunc);
+        std::ofstream outputStream0(outputname[0].c_str(), std::ios::out | std::ios::binary );        
+        std::ofstream outputStream1(outputname[1].c_str(), std::ios::out | std::ios::binary );
         //std::ofstream outputStream2(outputname[2].c_str(), std::ios::out | std::ios::binary | std::ios::trunc);
         //std::ofstream outputStream3(outputname[3].c_str(), std::ios::out | std::ios::binary | std::ios::trunc);        
 
         // General interface to work with I/O buffers operations
         size_t chunkSize = Kbytes * 1000;
-        IOOperations io_0(inputStream, outputStream0, chunkSize);
-        IOOperations io_1(inputStream, outputStream1, chunkSize);
+        IOOperations io_0(inputStream, outputStream0, chunkSize, inputName, outputname[0]);
+        IOOperations io_1(inputStream, outputStream1, chunkSize, inputName, outputname[1]);
         //IOOperations io_2(inputStream, outputStream1, chunkSize);
         //IOOperations io_3(inputStream, outputStream1, chunkSize);
 
@@ -329,6 +374,8 @@ int main(int argc, char* argv[]) {
         //Socket* r_sock_1 = new Socket();
         //Socket* r_sock_2 = new Socket();
         //Socket* r_sock_3 = new Socket();
+        node_status = 0;
+        std::cout << "reader num_record: " << +num_record << "\n";
         AsyncReader asyncreader_0(io_0, num_record, r_sock_0, node_status);
         asyncreader_0.setNetworkConfig(self_IP,in_port);
         /*AsyncReader asyncreader_1(io_0, num_record, r_sock_1, node_status);
@@ -339,7 +386,7 @@ int main(int argc, char* argv[]) {
         asyncreader_2.setNetworkConfig(self_IP,in_port);
         asyncreader_3.setNetworkConfig(self_IP,in_port);*/
 
-        async_file_reader_node file_reader_0(g, 1, [&asyncreader_0](const tbb::flow::continue_msg& msg, async_file_reader_node::gateway_type& gateway) {
+        async_file_reader_node file_reader_0(g, tbb::flow::serial, [&asyncreader_0](const tbb::flow::continue_msg& msg, async_file_reader_node::gateway_type& gateway) {
             asyncreader_0.submitRead(gateway);
         });
 
@@ -355,21 +402,23 @@ int main(int argc, char* argv[]) {
             asyncreader_3.submitRead(gateway);
         });*/
 
-        tbb::flow::function_node<BufferMsg, BufferMsg > sorter_0(g, 4, BufferSorter(num_record, sort_type));
+        tbb::flow::function_node<BufferMsg, BufferMsg > sorter_0(g, tbb::flow::serial, BufferSorter(num_record, sort_type));
 
-        /*tbb::flow::sequencer_node< BufferMsg > ordering_0 (g, [](const BufferMsg& bufferMsg)->size_t {
+        tbb::flow::sequencer_node< BufferMsg > ordering_0 (g, [](const BufferMsg& bufferMsg)->size_t {
             return bufferMsg.seqId;
-        });*/
+        });
 
+        std::cout << "writer num_record: " << +num_record << "\n";
+        //node_status = 1;
         Socket* w_sock = new Socket();
-        AsyncWriter asyncwriter_0(io_1, num_record, w_sock,  node_status);
+        AsyncWriter asyncwriter_0(io_0, num_record, w_sock,  node_status);
         //AsyncWriter asyncwriter_1(io_1, num_record, w_sock,  node_status);
         //AsyncWriter asyncwriter_2(io_1, num_record, w_sock,  node_status);
         //AsyncWriter asyncwriter_3(io_1, num_record, w_sock,  node_status);
 
         asyncwriter_0.startWriterThread(); 
 
-        async_file_writer_node output_writer_0(g, 1, [&asyncwriter_0](const BufferMsg& bufferMsg, async_file_writer_node::gateway_type& gateway) {
+        async_file_writer_node output_writer_0(g, tbb::flow::serial, [&asyncwriter_0](const BufferMsg& bufferMsg, async_file_writer_node::gateway_type& gateway) {
             asyncwriter_0.submitWrite(bufferMsg);
         });
         //async_file_writer_node output_writer_1(g, 4, [&asyncwriter_1](const BufferMsg& bufferMsg, async_file_writer_node::gateway_type& gateway) {
@@ -383,7 +432,7 @@ int main(int argc, char* argv[]) {
         //});
 
         //node_status=0;
-       if(node_status == 1){
+        if(node_status == 1){
             //make_edge(file_reader_0, output_writer_0);
             make_edge(file_reader_0, sorter_0);
             //make_edge(sorter_0, ordering_0);
@@ -406,7 +455,7 @@ int main(int argc, char* argv[]) {
 
         std::ofstream std_overall_file, radix_overall_file;
 
-        uint64_t sorted_bits= 8*Kbytes*1000;
+        uint64_t M_sorted_bits= 8*Kbytes;
         double sort_rate=0;
         uint64_t sum_radix_time=0;
         uint64_t sum_std_time=0; 
@@ -415,7 +464,9 @@ int main(int argc, char* argv[]) {
         if(sort_type == 0){
             std::string std_overall_str = "split_overall_buffer_" + std::to_string(Kbytes) + extension;
             std_overall_file.open(std_overall_str, std::ofstream::out | std::ofstream::app);
-            std_overall_file << (tbb::tick_count::now() - mainStartTime).seconds()<< "\n";
+            double sort_time (tbb::tick_count::now() - mainStartTime).seconds();
+            sort_rate=(double) M_sorted_bits/sort_time; 
+            std_overall_file << sort_rate << "\n";
         }
         else{
             std::string radix_overall_str = "split_overall_buffer_" + std::to_string(Kbytes) + extension;
@@ -423,8 +474,8 @@ int main(int argc, char* argv[]) {
             radix_overall_file << (tbb::tick_count::now() - mainStartTime).seconds() << "\n";
         } 
         std_overall_file.close();
-        radix_overall_file.close();
-        */
+        radix_overall_file.close();*/
+
         return 0;
     } catch (std::exception& e) {
         std::cerr << "Error occurred. Error text is : \"" << e.what() << "\"\n";

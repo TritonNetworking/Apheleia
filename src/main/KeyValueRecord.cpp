@@ -6,6 +6,9 @@
 #include <cstring>
 #include "KeyValueRecord.h"
 
+KeyValueRecord::KeyValueRecord(){	
+}
+
 KeyValueRecord::KeyValueRecord(uint32_t ksize_, uint32_t vsize_){	
 	keyBuffer = new char[ksize_];
 	valueBuffer = new char[vsize_];
@@ -14,8 +17,10 @@ KeyValueRecord::KeyValueRecord(uint32_t ksize_, uint32_t vsize_){
 void KeyValueRecord::initRecord(uint32_t ksize_, uint32_t vsize_){
 	//keySize= ksize_;
 	//valueSize= vsize_;
-	memset(keyBuffer,0,ksize_*sizeof(char));
-	memset(valueBuffer,0,vsize_*sizeof(char));
+	keyBuffer = new char[ksize_];
+	valueBuffer = new char[vsize_];
+	//memset(keyBuffer,0,ksize_*sizeof(char));
+	//memset(valueBuffer,0,vsize_*sizeof(char));
 }
 
 KeyValueRecord::~KeyValueRecord(){

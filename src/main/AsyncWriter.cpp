@@ -11,11 +11,11 @@ AsyncWriter::~AsyncWriter() {
 
 void AsyncWriter::startWriterThread(){
         if(node_status == 0){
-            std::cout<< "sendLoop" << "\n";
+            //std::cout<< "sendLoop" << "\n";
             m_WriterThread= std::thread(&AsyncWriter::sendLoop, this);
         }
         else if(node_status == 1){
-            std::cout<< "writingLoop" << "\n";
+            //std::cout<< "writingLoop" << "\n";
             m_WriterThread= std::thread(&AsyncWriter::writingLoop, this);
         }
         else{
@@ -34,12 +34,15 @@ void AsyncWriter::setNetworkConfig(std::string ip, std::string port){
 }
 
 void AsyncWriter::writingLoop() {
-        BufferMsg buffer;
+    int loop_counter = 0;
+    BufferMsg buffer;
+    m_writeQueue.pop(buffer);
+    while (!buffer.isLast) {
+        m_io.writeChunk(buffer.outputBuffer);
         m_writeQueue.pop(buffer);
-        while (!buffer.isLast) {
-            m_io.writeChunk(buffer.outputBuffer);
-            m_writeQueue.pop(buffer);
-        }
+        loop_counter++;
+    }
+    std::cout << "write loop counter:" <<  loop_counter << "\n";
 }
 
 void AsyncWriter::sendLoop(){

@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <iostream>
-#include "tbb/concurrent_queue.h"
+//#include "tbb/concurrent_queue.h"
 
 #include "BucketTable.h"
 
@@ -69,7 +69,7 @@ bool BucketTable::checkSortingEnds(){
 
 void BucketTable::distributeBuffer(KeyValueRecord* kv){
 	uint8_t LSDkey= kv->getKey(currentdigit);
-	//std::cout << +LSDkey << "\n";
+	//std::cout <<"LSDkey:" << +LSDkey << "\n";
 	// take the least significant byte as LSDkey, so we don't need to do mod since we use a 256 radix ine the first place
 	Bucket* bckt = bucket_safelist.at(LSDkey);
 	bckt->pushEntry(kv);
