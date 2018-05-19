@@ -28,6 +28,7 @@
 #include "json.hpp"
 #include <vector>
 #include <utility> 
+#include <ctime>
 
 //typedef tbb::flow::async_node< tbb::flow::continue_msg, BufferMsg > async_file_reader_node;
 //typedef tbb::flow::async_node< BufferMsg, tbb::flow::continue_msg > async_file_writer_node;
@@ -147,10 +148,32 @@ int main(int argc, char* argv[]) {
 
         // General interface to work with I/O buffers operations
         size_t chunkSize = Kbytes * 1000;
-        IOOperations io_0(inputStream, outputStream0, chunkSize);
-        IOOperations io_1(inputStream, outputStream1, chunkSize);
+        IOOperations io_0(inputStream, outputStream0, chunkSize, inputName, outputname[0]);
+        IOOperations io_1(inputStream, outputStream1, chunkSize, inputName, outputname[1]);
         //IOOperations io_2(inputStream, outputStream2, chunkSize);
         //IOOperations io_3(inputStream, outputStream3, chunkSize);
+        time_t rawtime;
+        struct tm * timeinfo;
+        char buffer[80];
+
+        time (&rawtime);
+        timeinfo = localtime(&rawtime);
+
+        strftime(buffer,sizeof(buffer),"%Y:%m:%d:%H:%M",timeinfo);
+        std::string time_str(buffer);
+        std::cout << "The Time is:"+time_str <<"\n";
+
+
+
+        auto console = spdlog::stdout_color_mt("console");
+        spdlog::set_pattern("[%H:%M:%S %F] [thread %t] %v");
+        console->info("spdlog console logger starts");
+        auto read_logger = spdlog::basic_logger_mt("async_reader_logger", "/tmp/read_"+time_str+"_buffer_"+std::to_string(Kbytes)+"_"+machine_name+".log");
+        read_logger->info("async_reader logger starts");
+        auto send_logger = spdlog::basic_logger_mt("async_writer_logger", "/tmp/send_"+time_str+"_buffer_"+std::to_string(Kbytes)+"_"+machine_name+".log");
+        send_logger->info("async_writer logger starts");
+        auto map_logger = spdlog::basic_logger_mt("mapper_logger", "/tmp/map_"+time_str+"_buffer_"+std::to_string(Kbytes)+"_"+machine_name+".log");
+        map_logger->info("mapper logger starts");
 
         // Sender Section, node_status == 0
         tbb::flow::graph g;
@@ -260,7 +283,9 @@ int main(int argc, char* argv[]) {
         uint64_t sorted_bits= 8*Kbytes*1000;
         double sort_rate=0;
         uint64_t sum_radix_time=0;
-        uint64_t sum_std_time=0; 
+        uint64_t sum_std_time=0;
+
+        //inc_functor body_copy = tbb::flow::copy_body<inc_functor>( exe_node ); 
 
         /*std::string extension = ".txt";
         if(sort_type == 0){

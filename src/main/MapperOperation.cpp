@@ -2,12 +2,28 @@
 #include "BaseBuffer.h"
 #include "MapperOperation.h"
 
-MapperOperation::MapperOperation(uint32_t num_rcrd) : num_record(num_rcrd), counter(0), nway(4) {}
+MapperOperation::MapperOperation(uint32_t num_rcrd) : num_record(num_rcrd), counter(0), nway(4) {
+    _logger= spdlog::get("mapper_logger");
+    _logger->info("mapper starts");
+}
+
+MapperOperation::~MapperOperation(){
+    _logger->info("mapper destructed");
+}
+
+uint64_t MapperOperation::getNanoSecond(struct timespec tp){
+    clock_gettime(CLOCK_MONOTONIC, &tp);
+    return (1000000000) * (uint64_t)tp.tv_sec + tp.tv_nsec;
+}
 
 void MapperOperation::operator() (BufferMsg buffer, Mapper::output_ports_type &op){
         //std::cout << "MapperOp"<< "-";
-        //std::cout << "counter: " << counter << "\n";   
+        //std::cout << "counter: " << counter << "\n";
+    struct timespec ts1,ts2;
+    uint64_t map_start, map_end;
+    //_logger->info("mapper on buffer num {0}", counter);   
     if(!buffer.isLast){
+        map_start = MapperOperation::getNanoSecond(ts1);
         BufferMsg bufmsg_array[nway];
         std::vector<Buffer> basebuf_array;
         size_t chunkSize = buffer.inputBuffer.len;
@@ -66,7 +82,10 @@ void MapperOperation::operator() (BufferMsg buffer, Mapper::output_ports_type &o
                 std::get<3>(op).try_put(bufmsg_array[i]);
             }
         }
+        map_end = MapperOperation::getNanoSecond(ts2);
+        _logger->info("map_time {0:d}", map_end - map_start);
         counter++; 
+        
     }
     else{ // isLast == true
         BufferMsg bufmsg_array[nway];
@@ -86,6 +105,7 @@ void MapperOperation::operator() (BufferMsg buffer, Mapper::output_ports_type &o
                 std::get<3>(op).try_put(bufmsg_array[i]);
             }        
         }
+        _logger->info("mapper ends");
     }             
 }
 

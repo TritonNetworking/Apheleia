@@ -14,6 +14,7 @@
 #include <vector>
 #include <inttypes.h>
 #include <iostream>
+#include <memory>
 
 #include "Socket.h"
 
@@ -22,7 +23,9 @@ const int Socket::YES_REUSE = 1;
 Socket::Socket()
   : mode(NONE),
     address(""),
+    sock_bytes(0),
     fd(-1) {
+     _logger = spdlog::get("socket_logger"); 
 }
 
 Socket::~Socket() {
@@ -120,6 +123,7 @@ Socket* Socket::tcpAccept(uint64_t timeoutInMicros, uint64_t socketBufferSize) {
   }
 
   std::string clientIPAddress = inet_ntoa(clientAddress.sin_addr);
+  _logger->info("sock_accept {}", clientIPAddress);
 
   // Set the TCP receive buffer size
   if (socketBufferSize > 0 && setsockopt(
@@ -275,28 +279,41 @@ uint64_t Socket::tcpReceive(char* buffer, uint64_t buf_size) {
   int64_t  recv_size  = buf_size;
   char* recvBuffer;
   int64_t numBytes;
+  struct timespec ts1,ts2;
+  uint64_t recv_start, recv_end;
   //printf("rdv fd %d\n", fd);
   while(recv_size > 0){
     recvBuffer = (char*) (buffer + totalBytes);
+    recv_start = Socket::getNanoSecond(ts1);
     numBytes = recv(fd, recvBuffer, recv_size, MSG_DONTWAIT);
+    recv_end = Socket::getNanoSecond(ts2);
+    //_logger->info("sock_bytes {0:d} sock_recv {1:d}", sock_bytes, recv_end - recv_start);
 
     if(numBytes > 0){
       totalBytes = totalBytes + numBytes;
+      sock_bytes = sock_bytes + numBytes;
       recv_size = recv_size - numBytes;
+      _logger->info("sock_bytes {0:d} sock_recv {1:d}", sock_bytes, recv_end - recv_start);
       //printf("%p <- %p + %" PRId64 "\n", recvBuffer, buffer, numBytes);
     }    
   }
+  //_logger->info("===");
   //printf("rcv done, total bytes %" PRId64 "\n", totalBytes);
   //ssize_t numBytes = recv(fd, buffer, buf_size, MSG_DONTWAIT);
   if(totalBytes > 0){
+    //_logger->info("sock_return");
     return (uint64_t) totalBytes;
   }
   else{
+    //_logger->info("sock_stall");
     return 0;
   } 
   
 }
 
+int64_t Socket::getSocketBytes() {
+      return sock_bytes;
+}
 
 const std::string& Socket::getAddress() const {
   return address;

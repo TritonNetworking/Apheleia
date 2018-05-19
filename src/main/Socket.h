@@ -8,6 +8,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <vector>
+#include "spdlog/spdlog.h"
 
 class Socket{
 
@@ -29,14 +30,22 @@ class Socket{
 	uint64_t tcpReceive(char *buffer, uint64_t buf_size);
 	const std::string& getAddress() const;
   	int getFD() const;
+  	int64_t getSocketBytes();
+  	inline uint64_t getNanoSecond(struct timespec tp){
+  		clock_gettime(CLOCK_MONOTONIC, &tp);
+    	return (1000000000) * (uint64_t)tp.tv_sec + tp.tv_nsec;
+  	}
 	//bool closed() const;
 
 	private:
 	static const int YES_REUSE;
+	std::shared_ptr<spdlog::logger> _logger;
 	Mode mode;
 	std::string address;
 	int fd;
 	fd_set acceptFDSet;	
+	// temp var
+	int64_t sock_bytes;
 };
 
 typedef std::vector<Socket*> SocketArray;

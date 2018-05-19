@@ -9,6 +9,8 @@
 #include "tbb/compat/thread"
 #include "tbb/concurrent_queue.h"
 #include <cstdint>
+#include <time.h>
+#include "spdlog/spdlog.h"
 
 typedef tbb::flow::async_node< BufferMsg, tbb::flow::continue_msg > async_file_writer_node;
 
@@ -22,6 +24,10 @@ public:
     void submitWrite(const BufferMsg& bufferMsg);
 
     void setNetworkConfig(std::string ip, std::string port);
+    inline uint64_t getNanoSecond(struct timespec tp){
+        clock_gettime(CLOCK_MONOTONIC, &tp);
+        return (1000000000) * (uint64_t)tp.tv_sec + tp.tv_nsec;
+    }
 
 private:
     void writingLoop();
@@ -32,6 +38,7 @@ private:
     int count=0;
     uint32_t m_num_record;
     int node_status; //-1= error 0=send 1= recv
+    std::shared_ptr<spdlog::logger> _logger;
 
     uint64_t Retry=5;
     uint64_t retryDelayInMicros=1000;
